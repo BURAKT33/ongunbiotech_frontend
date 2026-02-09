@@ -19,7 +19,7 @@ export function Technology() {
           {/* Image */}
           <div className="order-2 lg:order-1">
             <ImageWithFallback
-              src="https://images.unsplash.com/photo-1654339477421-067af00a4a42?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncmVlbiUyMHBsYW50JTIwbGVhdmVzJTIwY2xvc2UlMjB1cHxlbnwxfHx8fDE3NzAyODgzNDR8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+              src="/images/WhatsApp Image 2026-02-09 at 16.14.23(1).jpeg"
               alt="Bitki Yaprakları Yakın Çekim"
               className="rounded-2xl shadow-xl w-full h-auto"
             />

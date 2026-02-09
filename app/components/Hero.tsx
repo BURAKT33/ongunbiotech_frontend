@@ -81,7 +81,7 @@ export function Hero() {
           <div className="relative">
             <div className="absolute inset-0 bg-green-600/10 rounded-3xl blur-3xl"></div>
             <ImageWithFallback
-              src="https://images.unsplash.com/photo-1554116154-e733de92fe4b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwbGFudCUyMHRlY2hub2xvZ3klMjBtb25pdG9yaW5nfGVufDF8fHx8MTc3MDI4ODM0Nnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+              src="/images/WhatsApp Image 2026-02-09 at 16.14.23.jpeg"
               alt="Bitki İzleme Teknolojisi"
               className="relative rounded-2xl shadow-2xl w-full h-auto"
             />
