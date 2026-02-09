@@ -11,8 +11,8 @@ export function Features() {
     },
     {
       icon: Thermometer,
-      title: 'Çevre Koşulları İzleme',
-      description: 'Sıcaklık, nem ve ışık seviyelerini izleyerek optimal büyüme koşullarını sağlayın.',
+      title: 'Soğuk veya Sıcaklık Streslerini İzleme',
+      description: 'Sıcaklık, nem ve ışık seviyelerindeki anormallikleri anlayın ve bitkilerinizin sağlığını koruyun.',
       gradient: 'from-orange-500 to-red-500',
     },
     {
