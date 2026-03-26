@@ -1,24 +1,37 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Leaf, LogIn } from 'lucide-react';
+import { setStoredRole, type UserRole } from '../lib/session';
 
 export function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const loginRole: UserRole = useMemo(
+    () => (searchParams.get('rol') === 'muhendis' ? 'muhendis' : 'ciftci'),
+    [searchParams],
+  );
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const isEngineer = loginRole === 'muhendis';
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Basit demo giriş - gerçek uygulamada authentication yapılmalı
     if (email && password) {
+      setStoredRole(loginRole);
       navigate('/panel');
     }
   };
 
-  // Demo kullanıcı bilgileri ile otomatik doldur
   const fillDemoCredentials = () => {
-    setEmail('ahmet@ciftlik.com');
-    setPassword('demo123');
+    if (isEngineer) {
+      setEmail('deniz.yilmaz@plantsignal.com');
+      setPassword('demo123');
+    } else {
+      setEmail('ahmet@ciftlik.com');
+      setPassword('demo123');
+    }
   };
 
   return (
@@ -32,8 +45,14 @@ export function Login() {
             </div>
             <span className="text-2xl font-semibold text-gray-900">PlantSignal</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Çiftçi Paneli</h1>
-          <p className="text-gray-600">Bitkilerinizi izlemek için giriş yapın</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {isEngineer ? 'Mühendis Paneli' : 'Çiftçi Paneli'}
+          </h1>
+          <p className="text-gray-600">
+            {isEngineer
+              ? 'Bağlı çiftçilerin raporlarını ve sahadaki ölçümlerinizi yönetmek için giriş yapın'
+              : 'Bitkilerinizi izlemek için giriş yapın'}
+          </p>
         </div>
 
         {/* Login Form */}
@@ -49,7 +68,7 @@ export function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent outline-none"
-                placeholder="ornek@ciftlik.com"
+                placeholder={isEngineer ? 'muhendis@firma.com' : 'ornek@ciftlik.com'}
                 required
               />
             </div>

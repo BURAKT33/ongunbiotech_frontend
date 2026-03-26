@@ -1,19 +1,31 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { 
   Leaf, LogOut, BarChart3, Activity, MessageSquare, 
-  Settings, Bell, User
+  Settings, User, RefreshCw
 } from 'lucide-react';
 import { PlantMonitor } from '../components/dashboard/PlantMonitor';
 import { AIAssistant } from '../components/dashboard/AIAssistant';
+import { Reports } from '../components/dashboard/Reports';
+import { EngineerSignals } from '../components/dashboard/EngineerSignals';
+import { clearStoredRole, getStoredRole, type UserRole } from '../lib/session';
+import { DataSync } from '../components/dashboard/DataSync';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'monitor' | 'ai'>('monitor');
+  const [activeTab, setActiveTab] = useState<'monitor' | 'ai' | 'reports' | 'sync'>('monitor');
+  const [role, setRole] = useState<UserRole>('ciftci');
+
+  useEffect(() => {
+    setRole(getStoredRole());
+  }, []);
 
   const handleLogout = () => {
+    clearStoredRole();
     navigate('/');
   };
+
+  const isEngineer = role === 'muhendis';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -28,23 +40,29 @@ export function Dashboard() {
               </div>
               <div>
                 <span className="text-xl font-semibold text-gray-900">PlantSignal</span>
-                <p className="text-xs text-gray-500">Çiftçi Paneli</p>
+                <p className="text-xs text-gray-500">
+                  {isEngineer ? 'Mühendis Paneli' : 'Çiftçi Paneli'}
+                </p>
               </div>
             </div>
 
             {/* Right Menu */}
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-gray-100 rounded-lg relative">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-              <div className="flex items-center gap-3 border-l pl-4">
+              <div className="flex items-center gap-3">
                 <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium text-gray-900">Ahmet Çiftçi</p>
-                  <p className="text-xs text-gray-500">ahmet@ciftlik.com</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {isEngineer ? 'Deniz Yılmaz' : 'Ahmet Çiftçi'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {isEngineer ? 'deniz.yilmaz@plantsignal.com' : 'ahmet@ciftlik.com'}
+                  </p>
                 </div>
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-green-600" />
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    isEngineer ? 'bg-teal-100' : 'bg-green-100'
+                  }`}
+                >
+                  <User className={`w-5 h-5 ${isEngineer ? 'text-teal-700' : 'text-green-600'}`} />
                 </div>
               </div>
               <button
@@ -72,7 +90,7 @@ export function Dashboard() {
               }`}
             >
               <Activity className="w-5 h-5" />
-              <span className="font-medium">Bitki İzleme</span>
+              <span className="font-medium">{isEngineer ? 'Sinyal Ölçümleri' : 'Bitki İzleme'}</span>
             </button>
 
             <button
@@ -87,9 +105,30 @@ export function Dashboard() {
               <span className="font-medium">AI Asistan</span>
             </button>
 
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'reports'
+                  ? 'bg-green-50 text-green-600'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
               <BarChart3 className="w-5 h-5" />
-              <span className="font-medium">Raporlar</span>
+              <span className="font-medium">
+                {isEngineer ? 'Çiftçi Raporları' : 'Raporlar'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('sync')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'sync'
+                  ? 'bg-green-50 text-green-600'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <RefreshCw className="w-5 h-5" />
+              <span className="font-medium">Veri senkron</span>
             </button>
 
             <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
@@ -109,7 +148,7 @@ export function Dashboard() {
               }`}
             >
               <Activity className="w-5 h-5" />
-              <span className="text-xs">İzleme</span>
+              <span className="text-xs">{isEngineer ? 'Sinyal' : 'İzleme'}</span>
             </button>
             <button
               onClick={() => setActiveTab('ai')}
@@ -120,14 +159,34 @@ export function Dashboard() {
               <MessageSquare className="w-5 h-5" />
               <span className="text-xs">AI</span>
             </button>
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${
+                activeTab === 'reports' ? 'text-green-600' : 'text-gray-600'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="text-xs">Rapor</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('sync')}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${
+                activeTab === 'sync' ? 'text-green-600' : 'text-gray-600'
+              }`}
+            >
+              <RefreshCw className="w-5 h-5" />
+              <span className="text-xs">Senkron</span>
+            </button>
           </div>
         </div>
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto pb-20 md:pb-0">
           <div className="p-4 sm:p-6 lg:p-8">
-            {activeTab === 'monitor' && <PlantMonitor />}
+            {activeTab === 'monitor' && (isEngineer ? <EngineerSignals /> : <PlantMonitor />)}
             {activeTab === 'ai' && <AIAssistant />}
+            {activeTab === 'reports' && <Reports mode={isEngineer ? 'muhendis' : 'ciftci'} />}
+            {activeTab === 'sync' && <DataSync />}
           </div>
         </main>
       </div>

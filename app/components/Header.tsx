@@ -1,12 +1,12 @@
-import { Menu, X } from 'lucide-react';
+import { Menu, X, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate } from 'react-router';
 import LogoImage from '../../Gemini_Generated_Image_uy7tfluy7tfluy7t(1).png';
 
 export function Header() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loginMenuOpen, setLoginMenuOpen] = useState(false);
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm z-50 border-b border-gray-200">
@@ -38,12 +38,37 @@ export function Header() {
             <a href="/#iletisim" className="text-gray-700 hover:text-green-600 transition-colors">
               İletişim
             </a>
-            <button 
-              onClick={() => navigate('/giris')}
-              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Çiftçi Girişi
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setLoginMenuOpen((prev) => !prev)}
+                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors inline-flex items-center gap-2"
+              >
+                Giriş Yap
+                <ChevronDown className={`w-4 h-4 transition-transform ${loginMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {loginMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50">
+                  <button
+                    onClick={() => {
+                      navigate('/giris?rol=ciftci');
+                      setLoginMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+                  >
+                    Çiftçi Girişi
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/giris?rol=muhendis');
+                      setLoginMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+                  >
+                    Mühendis Girişi
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -93,12 +118,21 @@ export function Header() {
               </a>
               <button 
                 onClick={() => {
-                  navigate('/giris');
+                  navigate('/giris?rol=ciftci');
                   setMobileMenuOpen(false);
                 }}
                 className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors text-left"
               >
                 Çiftçi Girişi
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/giris?rol=muhendis');
+                  setMobileMenuOpen(false);
+                }}
+                className="bg-white border border-green-600 text-green-700 px-6 py-2 rounded-lg hover:bg-green-50 transition-colors text-left"
+              >
+                Mühendis Girişi
               </button>
             </div>
           </div>

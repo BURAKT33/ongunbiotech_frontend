@@ -1,6 +1,24 @@
-import { useState } from 'react';
-import { Activity, Droplets, Thermometer, Sun, Wind, Calendar } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { useEffect, useState } from 'react';
+import { Activity, Thermometer, Wind, Calendar } from 'lucide-react';
+import type { SignalChartPayload } from '../../lib/analyzerTypes';
+import {
+  readLastAnalysisSummary,
+  readLatestApiSignalChart,
+  REPORTS_UPDATED_EVENT,
+  type LastAnalysisSummary,
+} from '../../lib/persistAnalyzerReport';
+import { ReportSignalCharts } from './ReportSignalCharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from 'recharts';
 
 // Mock gerçek zamanlı veri
 const realtimeData = [
@@ -13,18 +31,24 @@ const realtimeData = [
   { time: 'Şimdi', elektrik: 85, nem: 38 },
 ];
 
-// Bitki sağlık göstergeleri
-const healthData = [
-  { subject: 'Su', value: 65 },
-  { subject: 'Besin', value: 85 },
-  { subject: 'Işık', value: 90 },
-  { subject: 'Sıcaklık', value: 88 },
-  { subject: 'Nem', value: 70 },
-  { subject: 'pH', value: 78 },
-];
-
 export function PlantMonitor() {
   const [selectedPlant, setSelectedPlant] = useState('domates-1');
+  const [lastSummary, setLastSummary] = useState<LastAnalysisSummary | null>(null);
+  const [apiChart, setApiChart] = useState<SignalChartPayload | null>(null);
+
+  useEffect(() => {
+    const sync = () => {
+      setLastSummary(readLastAnalysisSummary());
+      setApiChart(readLatestApiSignalChart());
+    };
+    sync();
+    window.addEventListener(REPORTS_UPDATED_EVENT, sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener(REPORTS_UPDATED_EVENT, sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
 
   const plants = [
     { id: 'domates-1', name: 'Domates - Sera A, Sıra 1', status: 'healthy' },
@@ -58,6 +82,33 @@ export function PlantMonitor() {
         <p className="text-gray-600 mt-1">Bitkilerinizin detaylı verilerini izleyin</p>
       </div>
 
+      {lastSummary && (
+        <div
+          className={`rounded-xl border p-4 text-sm ${
+            lastSummary.durum.toLowerCase().includes('köt') || lastSummary.durum.toLowerCase().includes('kotu')
+              ? 'bg-amber-50 border-amber-200 text-amber-950'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-950'
+          }`}
+        >
+          <p className="font-medium">Son sinyal analizi özeti</p>
+          <p className="mt-1 text-gray-700">{lastSummary.title}</p>
+          <p className="mt-1">
+            <span className="text-gray-600">Durum:</span>{' '}
+            <span className="font-semibold">{lastSummary.durum}</span>
+            {lastSummary.stressScore != null && (
+              <>
+                {' '}
+                · <span className="text-gray-600">Stres skoru:</span>{' '}
+                <span className="font-mono tabular-nums">{lastSummary.stressScore.toFixed(2)}</span>
+              </>
+            )}
+          </p>
+          <p className="text-xs text-gray-600 mt-2">
+            Veri senkron ile yeni analiz yüklediğinizde güncellenir. Ayrıntılı rapor için Raporlar sekmesine gidin.
+          </p>
+        </div>
+      )}
+
       {/* Plant Selector */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
         <h3 className="text-sm font-medium text-gray-700 mb-3">Bitki Seçin</h3>
@@ -85,7 +136,7 @@ export function PlantMonitor() {
       </div>
 
       {/* Real-time Metrics */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
@@ -103,21 +154,6 @@ export function PlantMonitor() {
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
-              <Droplets className="w-5 h-5 text-cyan-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Toprak Nemi</p>
-              <p className="text-xl font-bold text-gray-900">38%</p>
-            </div>
-          </div>
-          <div className="text-xs text-gray-600">
-            <span className="text-red-600">↓ 8%</span> son 24 saatte
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
               <Thermometer className="w-5 h-5 text-orange-600" />
             </div>
@@ -128,21 +164,6 @@ export function PlantMonitor() {
           </div>
           <div className="text-xs text-gray-600">
             <span className="text-gray-600">→</span> Stabil
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <Sun className="w-5 h-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Işık Şiddeti</p>
-              <p className="text-xl font-bold text-gray-900">8,500 lux</p>
-            </div>
-          </div>
-          <div className="text-xs text-gray-600">
-            <span className="text-green-600">↑ 5%</span> son 2 saatte
           </div>
         </div>
 
@@ -201,33 +222,47 @@ export function PlantMonitor() {
           </ResponsiveContainer>
         </div>
 
-        {/* Sağlık Göstergeleri */}
+        {/* Gelen sinyaller — API signal_chart veya örnek çizgi */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Bitki Sağlık Göstergeleri
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+            Gelen sinyaller
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <RadarChart data={healthData}>
-              <PolarGrid stroke="#e5e7eb" />
-              <PolarAngleAxis dataKey="subject" stroke="#6b7280" />
-              <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="#6b7280" />
-              <Radar 
-                name="Sağlık Skoru" 
-                dataKey="value" 
-                stroke="#10b981" 
-                fill="#10b981" 
-                fillOpacity={0.5}
-                strokeWidth={2}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
-                }}
-              />
-            </RadarChart>
-          </ResponsiveContainer>
+          <p className="text-sm text-gray-500 mb-4">
+            {apiChart
+              ? 'Son analizdeki binned sinyal (sütun + çizgi). Veri senkron ile yüklenen çıktı.'
+              : 'Sensörden gelen elektriksel sinyal (örnek zaman serisi)'}
+          </p>
+          {apiChart ? (
+            <ReportSignalCharts chart={apiChart} title="Son analiz — sinyal özeti" />
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={realtimeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="time" stroke="#9ca3af" />
+                <YAxis
+                  stroke="#9ca3af"
+                  domain={['dataMin - 5', 'dataMax + 5']}
+                  label={{ value: 'mV', angle: -90, position: 'insideLeft', fill: '#6b7280', fontSize: 11 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="elektrik"
+                  name="Elektriksel (mV)"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ fill: '#10b981', r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
