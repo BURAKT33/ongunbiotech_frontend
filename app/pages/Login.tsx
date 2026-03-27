@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Leaf, LogIn } from 'lucide-react';
 import { setStoredRole, type UserRole } from '../lib/session';
+import { loadGoogleIdentityScript, renderGoogleContinueButton } from '../lib/googleIdentity';
+import { postGoogleCredential } from '../lib/authApi';
 
 export function Login() {
   const navigate = useNavigate();
@@ -13,6 +15,9 @@ export function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const googleBtnRef = useRef<HTMLDivElement | null>(null);
 
   const isEngineer = loginRole === 'muhendis';
 
@@ -33,6 +38,46 @@ export function Login() {
       setPassword('demo123');
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+      if (!clientId || !googleBtnRef.current) return;
+      try {
+        await loadGoogleIdentityScript();
+        if (cancelled || !googleBtnRef.current) return;
+        renderGoogleContinueButton({
+          container: googleBtnRef.current,
+          clientId,
+          onCredential: async (credential) => {
+            setGoogleError(null);
+            setGoogleBusy(true);
+            try {
+              const result = await postGoogleCredential(credential, loginRole);
+              if (!result.ok) {
+                setGoogleError(result.error);
+                return;
+              }
+              const roleFromServer = result.user.role;
+              setStoredRole(roleFromServer === 'muhendis' ? 'muhendis' : 'ciftci');
+              navigate('/panel');
+            } catch (e) {
+              setGoogleError((e as Error).message || 'google_login_failed');
+            } finally {
+              setGoogleBusy(false);
+            }
+          },
+        });
+      } catch (e) {
+        setGoogleError((e as Error).message || 'google_script_failed');
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [loginRole, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
@@ -57,6 +102,32 @@ export function Login() {
 
         {/* Login Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center justify-center">
+              <div className="w-full">
+                <div
+                  ref={googleBtnRef}
+                  className={`w-full flex justify-center ${googleBusy ? 'opacity-70 pointer-events-none' : ''}`}
+                />
+              </div>
+            </div>
+            {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+              <p className="text-xs text-gray-500">
+                Google butonu için <code className="bg-gray-100 px-1 rounded">VITE_GOOGLE_CLIENT_ID</code> gerekli.
+              </p>
+            )}
+            {googleError && (
+              <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                Google giriş hatası: {googleError}
+              </p>
+            )}
+            <div className="flex items-center gap-3">
+              <div className="h-px bg-gray-200 flex-1" />
+              <span className="text-xs text-gray-400">veya</span>
+              <div className="h-px bg-gray-200 flex-1" />
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">

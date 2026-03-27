@@ -20,15 +20,154 @@ import {
   Line,
 } from 'recharts';
 
-// Mock gerçek zamanlı veri
-const realtimeData = [
-  { time: '00:00', elektrik: 62, nem: 45 },
-  { time: '04:00', elektrik: 58, nem: 48 },
-  { time: '08:00', elektrik: 72, nem: 42 },
-  { time: '12:00', elektrik: 85, nem: 38 },
-  { time: '16:00', elektrik: 78, nem: 41 },
-  { time: '20:00', elektrik: 70, nem: 44 },
-  { time: 'Şimdi', elektrik: 85, nem: 38 },
+type PlantStatus = 'healthy' | 'warning' | 'critical';
+type PlantTrend = {
+  text: string;
+  tone: 'up' | 'down' | 'flat';
+  suffix: string;
+};
+type PlantSeriesPoint = {
+  time: string;
+  elektrik: number;
+  nem: number;
+};
+type PlantHistoryRow = {
+  timeLabel: string;
+  elektrik: number;
+  nem: number;
+  sicaklik: number;
+  statusText: string;
+  statusTone: 'ok' | 'mid' | 'warn';
+};
+type PlantProfile = {
+  id: string;
+  name: string;
+  status: PlantStatus;
+  elektrikMv: number;
+  elektrikTrend: PlantTrend;
+  sicaklikC: number;
+  sicaklikNote: string;
+  havaNemiPct: number;
+  havaNemiNote: string;
+  sonSulamaSaat: number;
+  sulamaNote: string;
+  realtimeData: PlantSeriesPoint[];
+  history: PlantHistoryRow[];
+};
+
+const plantProfiles: PlantProfile[] = [
+  {
+    id: 'domates-1',
+    name: 'Domates - Sera A, Sıra 1',
+    status: 'healthy',
+    elektrikMv: 85,
+    elektrikTrend: { text: '↑ 12%', tone: 'up', suffix: 'son 24 saatte' },
+    sicaklikC: 25,
+    sicaklikNote: 'Stabil',
+    havaNemiPct: 62,
+    havaNemiNote: 'Normal aralık',
+    sonSulamaSaat: 18,
+    sulamaNote: '6 saat sonra önerilir',
+    realtimeData: [
+      { time: '00:00', elektrik: 62, nem: 45 },
+      { time: '04:00', elektrik: 58, nem: 48 },
+      { time: '08:00', elektrik: 72, nem: 42 },
+      { time: '12:00', elektrik: 85, nem: 38 },
+      { time: '16:00', elektrik: 78, nem: 41 },
+      { time: '20:00', elektrik: 70, nem: 44 },
+      { time: 'Şimdi', elektrik: 85, nem: 38 },
+    ],
+    history: [
+      { timeLabel: 'Bugün, 14:30', elektrik: 85, nem: 38, sicaklik: 25, statusText: 'Optimal', statusTone: 'ok' },
+      { timeLabel: 'Bugün, 12:30', elektrik: 82, nem: 41, sicaklik: 26, statusText: 'İyi', statusTone: 'ok' },
+      { timeLabel: 'Bugün, 10:30', elektrik: 78, nem: 44, sicaklik: 24, statusText: 'İyi', statusTone: 'ok' },
+      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 48, sicaklik: 22, statusText: 'Orta', statusTone: 'mid' },
+    ],
+  },
+  {
+    id: 'biber-1',
+    name: 'Biber - Sera A, Sıra 2',
+    status: 'warning',
+    elektrikMv: 73,
+    elektrikTrend: { text: '↓ 6%', tone: 'down', suffix: 'son 24 saatte' },
+    sicaklikC: 27,
+    sicaklikNote: 'Hafif yüksek',
+    havaNemiPct: 54,
+    havaNemiNote: 'Alt banda yakın',
+    sonSulamaSaat: 22,
+    sulamaNote: '2 saat içinde sulama önerilir',
+    realtimeData: [
+      { time: '00:00', elektrik: 68, nem: 55 },
+      { time: '04:00', elektrik: 64, nem: 57 },
+      { time: '08:00', elektrik: 72, nem: 53 },
+      { time: '12:00', elektrik: 76, nem: 50 },
+      { time: '16:00', elektrik: 71, nem: 52 },
+      { time: '20:00', elektrik: 69, nem: 54 },
+      { time: 'Şimdi', elektrik: 73, nem: 54 },
+    ],
+    history: [
+      { timeLabel: 'Bugün, 14:30', elektrik: 73, nem: 54, sicaklik: 27, statusText: 'Dikkat', statusTone: 'mid' },
+      { timeLabel: 'Bugün, 12:30', elektrik: 76, nem: 50, sicaklik: 28, statusText: 'Dikkat', statusTone: 'mid' },
+      { timeLabel: 'Bugün, 10:30', elektrik: 74, nem: 52, sicaklik: 27, statusText: 'Orta', statusTone: 'mid' },
+      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 53, sicaklik: 26, statusText: 'İyi', statusTone: 'ok' },
+    ],
+  },
+  {
+    id: 'domates-2',
+    name: 'Domates - Sera B, Sıra 1',
+    status: 'critical',
+    elektrikMv: 61,
+    elektrikTrend: { text: '↓ 14%', tone: 'down', suffix: 'son 24 saatte' },
+    sicaklikC: 30,
+    sicaklikNote: 'Yüksek',
+    havaNemiPct: 46,
+    havaNemiNote: 'Düşük',
+    sonSulamaSaat: 29,
+    sulamaNote: 'Acil sulama önerilir',
+    realtimeData: [
+      { time: '00:00', elektrik: 69, nem: 49 },
+      { time: '04:00', elektrik: 66, nem: 47 },
+      { time: '08:00', elektrik: 64, nem: 46 },
+      { time: '12:00', elektrik: 62, nem: 45 },
+      { time: '16:00', elektrik: 60, nem: 44 },
+      { time: '20:00', elektrik: 58, nem: 45 },
+      { time: 'Şimdi', elektrik: 61, nem: 46 },
+    ],
+    history: [
+      { timeLabel: 'Bugün, 14:30', elektrik: 61, nem: 46, sicaklik: 30, statusText: 'Kritik', statusTone: 'warn' },
+      { timeLabel: 'Bugün, 12:30', elektrik: 62, nem: 45, sicaklik: 31, statusText: 'Kritik', statusTone: 'warn' },
+      { timeLabel: 'Bugün, 10:30', elektrik: 64, nem: 46, sicaklik: 30, statusText: 'Dikkat', statusTone: 'mid' },
+      { timeLabel: 'Bugün, 08:30', elektrik: 66, nem: 47, sicaklik: 29, statusText: 'Dikkat', statusTone: 'mid' },
+    ],
+  },
+  {
+    id: 'salatalik-1',
+    name: 'Salatalık - Sera B, Sıra 3',
+    status: 'healthy',
+    elektrikMv: 79,
+    elektrikTrend: { text: '↑ 5%', tone: 'up', suffix: 'son 24 saatte' },
+    sicaklikC: 23,
+    sicaklikNote: 'Uygun aralık',
+    havaNemiPct: 68,
+    havaNemiNote: 'Yüksek ama stabil',
+    sonSulamaSaat: 12,
+    sulamaNote: '8 saat sonra önerilir',
+    realtimeData: [
+      { time: '00:00', elektrik: 65, nem: 66 },
+      { time: '04:00', elektrik: 67, nem: 67 },
+      { time: '08:00', elektrik: 72, nem: 69 },
+      { time: '12:00', elektrik: 77, nem: 68 },
+      { time: '16:00', elektrik: 75, nem: 67 },
+      { time: '20:00', elektrik: 76, nem: 68 },
+      { time: 'Şimdi', elektrik: 79, nem: 68 },
+    ],
+    history: [
+      { timeLabel: 'Bugün, 14:30', elektrik: 79, nem: 68, sicaklik: 23, statusText: 'İyi', statusTone: 'ok' },
+      { timeLabel: 'Bugün, 12:30', elektrik: 77, nem: 68, sicaklik: 24, statusText: 'İyi', statusTone: 'ok' },
+      { timeLabel: 'Bugün, 10:30', elektrik: 74, nem: 69, sicaklik: 23, statusText: 'Optimal', statusTone: 'ok' },
+      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 70, sicaklik: 22, statusText: 'Optimal', statusTone: 'ok' },
+    ],
+  },
 ];
 
 export function PlantMonitor() {
@@ -50,14 +189,9 @@ export function PlantMonitor() {
     };
   }, []);
 
-  const plants = [
-    { id: 'domates-1', name: 'Domates - Sera A, Sıra 1', status: 'healthy' },
-    { id: 'biber-1', name: 'Biber - Sera A, Sıra 2', status: 'warning' },
-    { id: 'domates-2', name: 'Domates - Sera B, Sıra 1', status: 'critical' },
-    { id: 'salatalik-1', name: 'Salatalık - Sera B, Sıra 3', status: 'healthy' },
-  ];
+  const selectedPlantData = plantProfiles.find((p) => p.id === selectedPlant) ?? plantProfiles[0];
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: PlantStatus) => {
     switch (status) {
       case 'healthy': return 'bg-green-100 text-green-800 border-green-200';
       case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -66,13 +200,26 @@ export function PlantMonitor() {
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: PlantStatus) => {
     switch (status) {
       case 'healthy': return 'Sağlıklı';
       case 'warning': return 'Dikkat';
       case 'critical': return 'Kritik';
       default: return 'Bilinmiyor';
     }
+  };
+
+  const trendClass =
+    selectedPlantData.elektrikTrend.tone === 'up'
+      ? 'text-green-600'
+      : selectedPlantData.elektrikTrend.tone === 'down'
+        ? 'text-red-600'
+        : 'text-gray-600';
+
+  const rowStatusClass = (tone: PlantHistoryRow['statusTone']): string => {
+    if (tone === 'warn') return 'bg-red-100 text-red-800';
+    if (tone === 'mid') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-green-100 text-green-800';
   };
 
   return (
@@ -113,7 +260,7 @@ export function PlantMonitor() {
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
         <h3 className="text-sm font-medium text-gray-700 mb-3">Bitki Seçin</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {plants.map((plant) => (
+          {plantProfiles.map((plant) => (
             <button
               key={plant.id}
               onClick={() => setSelectedPlant(plant.id)}
@@ -144,11 +291,12 @@ export function PlantMonitor() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Elektriksel Sinyal</p>
-              <p className="text-xl font-bold text-gray-900">85 mV</p>
+              <p className="text-xl font-bold text-gray-900">{selectedPlantData.elektrikMv} mV</p>
             </div>
           </div>
           <div className="text-xs text-gray-600">
-            <span className="text-green-600">↑ 12%</span> son 24 saatte
+            <span className={trendClass}>{selectedPlantData.elektrikTrend.text}</span>{' '}
+            {selectedPlantData.elektrikTrend.suffix}
           </div>
         </div>
 
@@ -159,11 +307,11 @@ export function PlantMonitor() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Sıcaklık</p>
-              <p className="text-xl font-bold text-gray-900">25°C</p>
+              <p className="text-xl font-bold text-gray-900">{selectedPlantData.sicaklikC}°C</p>
             </div>
           </div>
           <div className="text-xs text-gray-600">
-            <span className="text-gray-600">→</span> Stabil
+            <span className="text-gray-600">→</span> {selectedPlantData.sicaklikNote}
           </div>
         </div>
 
@@ -174,11 +322,11 @@ export function PlantMonitor() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Hava Nemi</p>
-              <p className="text-xl font-bold text-gray-900">62%</p>
+              <p className="text-xl font-bold text-gray-900">%{selectedPlantData.havaNemiPct}</p>
             </div>
           </div>
           <div className="text-xs text-gray-600">
-            <span className="text-gray-600">→</span> Normal aralık
+            <span className="text-gray-600">→</span> {selectedPlantData.havaNemiNote}
           </div>
         </div>
 
@@ -189,11 +337,11 @@ export function PlantMonitor() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Son Sulama</p>
-              <p className="text-xl font-bold text-gray-900">18 saat</p>
+              <p className="text-xl font-bold text-gray-900">{selectedPlantData.sonSulamaSaat} saat</p>
             </div>
           </div>
           <div className="text-xs text-gray-600">
-            6 saat sonra önerilir
+            {selectedPlantData.sulamaNote}
           </div>
         </div>
       </div>
@@ -206,7 +354,7 @@ export function PlantMonitor() {
             Günlük Trend (Elektriksel Sinyal)
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={realtimeData}>
+            <BarChart data={selectedPlantData.realtimeData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="time" stroke="#9ca3af" />
               <YAxis stroke="#9ca3af" />
@@ -228,40 +376,39 @@ export function PlantMonitor() {
             Gelen sinyaller
           </h3>
           <p className="text-sm text-gray-500 mb-4">
-            {apiChart
-              ? 'Son analizdeki binned sinyal (sütun + çizgi). Veri senkron ile yüklenen çıktı.'
-              : 'Sensörden gelen elektriksel sinyal (örnek zaman serisi)'}
+            Seçilen bitkinin sensörden gelen elektriksel sinyal zaman serisi
           </p>
-          {apiChart ? (
-            <ReportSignalCharts chart={apiChart} title="Son analiz — sinyal özeti" />
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={realtimeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="time" stroke="#9ca3af" />
-                <YAxis
-                  stroke="#9ca3af"
-                  domain={['dataMin - 5', 'dataMax + 5']}
-                  label={{ value: 'mV', angle: -90, position: 'insideLeft', fill: '#6b7280', fontSize: 11 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="elektrik"
-                  name="Elektriksel (mV)"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={{ fill: '#10b981', r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={selectedPlantData.realtimeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="time" stroke="#9ca3af" />
+              <YAxis
+                stroke="#9ca3af"
+                domain={['dataMin - 5', 'dataMax + 5']}
+                label={{ value: 'mV', angle: -90, position: 'insideLeft', fill: '#6b7280', fontSize: 11 }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="elektrik"
+                name="Elektriksel (mV)"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ fill: '#10b981', r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          {apiChart && (
+            <div className="mt-8 border-t border-gray-200 pt-6">
+              <ReportSignalCharts chart={apiChart} title="Son analiz (genel) — signal_chart" />
+            </div>
           )}
         </div>
       </div>
@@ -281,42 +428,19 @@ export function PlantMonitor() {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm text-gray-900">Bugün, 14:30</td>
-                <td className="py-3 px-4 text-sm text-gray-900">85</td>
-                <td className="py-3 px-4 text-sm text-gray-900">38</td>
-                <td className="py-3 px-4 text-sm text-gray-900">25</td>
-                <td className="py-3 px-4">
-                  <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">Optimal</span>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm text-gray-900">Bugün, 12:30</td>
-                <td className="py-3 px-4 text-sm text-gray-900">82</td>
-                <td className="py-3 px-4 text-sm text-gray-900">41</td>
-                <td className="py-3 px-4 text-sm text-gray-900">26</td>
-                <td className="py-3 px-4">
-                  <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">İyi</span>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm text-gray-900">Bugün, 10:30</td>
-                <td className="py-3 px-4 text-sm text-gray-900">78</td>
-                <td className="py-3 px-4 text-sm text-gray-900">44</td>
-                <td className="py-3 px-4 text-sm text-gray-900">24</td>
-                <td className="py-3 px-4">
-                  <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">İyi</span>
-                </td>
-              </tr>
-              <tr className="hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm text-gray-900">Bugün, 08:30</td>
-                <td className="py-3 px-4 text-sm text-gray-900">72</td>
-                <td className="py-3 px-4 text-sm text-gray-900">48</td>
-                <td className="py-3 px-4 text-sm text-gray-900">22</td>
-                <td className="py-3 px-4">
-                  <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">Orta</span>
-                </td>
-              </tr>
+              {selectedPlantData.history.map((row, idx) => (
+                <tr key={row.timeLabel} className={`${idx < selectedPlantData.history.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50`}>
+                  <td className="py-3 px-4 text-sm text-gray-900">{row.timeLabel}</td>
+                  <td className="py-3 px-4 text-sm text-gray-900">{row.elektrik}</td>
+                  <td className="py-3 px-4 text-sm text-gray-900">{row.nem}</td>
+                  <td className="py-3 px-4 text-sm text-gray-900">{row.sicaklik}</td>
+                  <td className="py-3 px-4">
+                    <span className={`text-xs px-2 py-1 rounded-full ${rowStatusClass(row.statusTone)}`}>
+                      {row.statusText}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
