@@ -1,19 +1,23 @@
 /**
- * Backend kök URL’si.
- * - Üretim (Vercel): `VITE_API_BASE_URL=https://....run.app` (sonunda / yok).
- * - Geliştirme: boş bırakılırsa `/api/...` kullanılır; Vite `VITE_DEV_BACKEND_URL` hedefine proxy’ler.
+ * Yerleşik üretim API (Cloud Run). `VITE_API_BASE_URL` ile override edilir.
+ * Geliştirmede env boş → `/api/...` + Vite proxy; üretimde env yoksa bu adres kullanılır.
  */
-export function getBackendApiBase(): string {
-  const raw = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  return raw?.replace(/\/$/, '').trim() ?? '';
-}
+const DEFAULT_PRODUCTION_API_BASE =
+  'https://backend-service-635662286956.europe-west1.run.app';
 
 /**
- * Google backend doğrulaması: prod’da `VITE_API_BASE_URL` zorunlu; dev’de boş → `/api/auth/google` proxy.
+ * Backend kök URL’si.
+ * - Üretim: önce `VITE_API_BASE_URL`; yoksa `DEFAULT_PRODUCTION_API_BASE`.
+ * - Geliştirme: env boşsa `''` → `/api/...` proxy.
  */
-export function getApiBaseForAuthOrThrow(): string {
-  const b = getBackendApiBase();
-  if (b) return b;
+export function getBackendApiBase(): string {
+  const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '').trim();
+  if (raw) return raw;
   if (import.meta.env.DEV) return '';
-  throw new Error('VITE_API_BASE_URL_not_set');
+  return DEFAULT_PRODUCTION_API_BASE;
+}
+
+/** @deprecated İsim geçmiş uyumu; artık hata fırlatmaz — `getBackendApiBase()` kullanın. */
+export function getApiBaseForAuthOrThrow(): string {
+  return getBackendApiBase();
 }

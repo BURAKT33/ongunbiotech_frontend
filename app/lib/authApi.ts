@@ -1,4 +1,4 @@
-import { getApiBaseForAuthOrThrow } from './apiBase';
+import { getBackendApiBase } from './apiBase';
 
 export type GoogleAuthResult =
   | {
@@ -8,14 +8,14 @@ export type GoogleAuthResult =
   | { ok: false; error: string };
 
 export function getApiBaseOrThrow(): string {
-  return getApiBaseForAuthOrThrow();
+  return getBackendApiBase();
 }
 
 export async function postGoogleCredential(
   credential: string,
   desiredRole?: 'ciftci' | 'muhendis',
 ): Promise<GoogleAuthResult> {
-  const base = getApiBaseOrThrow();
+  const base = getBackendApiBase();
   const url = base ? `${base}/api/auth/google` : '/api/auth/google';
   const res = await fetch(url, {
     method: 'POST',
