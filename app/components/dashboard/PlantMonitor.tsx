@@ -3,8 +3,9 @@ import { Activity, Thermometer, Wind, Calendar } from 'lucide-react';
 import type { SignalChartPayload } from '../../lib/analyzerTypes';
 import type { ReportItem } from '../../lib/reportTypes';
 import {
+  fetchMergedApiReportsForSession,
   formatMonitorReportButtonLabel,
-  readApiReportsNewestFirst,
+  latestSignalChartFromReportList,
   readLastAnalysisSummary,
   readLatestApiSignalChart,
   readMonitorCustomLabels,
@@ -78,14 +79,9 @@ function chartToSeries(chart: SignalChartPayload | null | undefined, maxPoints =
   }));
 }
 
-function initialMonitorSelectedKey(): string {
-  const reports = readApiReportsNewestFirst();
-  return reports.length > 0 ? `report:${reports[0].id}` : '';
-}
-
 export function PlantMonitor() {
   /** report:<ReportItem.id> | '' */
-  const [selectedKey, setSelectedKey] = useState<string>(initialMonitorSelectedKey);
+  const [selectedKey, setSelectedKey] = useState<string>('');
   const [lastSummary, setLastSummary] = useState<LastAnalysisSummary | null>(null);
   const [apiChart, setApiChart] = useState<SignalChartPayload | null>(null);
   const [apiReports, setApiReports] = useState<ReportItem[]>([]);
@@ -93,8 +89,8 @@ export function PlantMonitor() {
   const [labelDraft, setLabelDraft] = useState('');
 
   useEffect(() => {
-    const sync = () => {
-      const reports = readApiReportsNewestFirst();
+    const sync = async () => {
+      const reports = await fetchMergedApiReportsForSession();
       setApiReports(reports);
       setLastSummary(readLastAnalysisSummary());
       setMonitorLabels(readMonitorCustomLabels());
@@ -114,12 +110,13 @@ export function PlantMonitor() {
         return prev;
       });
     };
-    sync();
-    window.addEventListener(REPORTS_UPDATED_EVENT, sync);
-    window.addEventListener('focus', sync);
+    void sync();
+    const onSync = () => void sync();
+    window.addEventListener(REPORTS_UPDATED_EVENT, onSync);
+    window.addEventListener('focus', onSync);
     return () => {
-      window.removeEventListener(REPORTS_UPDATED_EVENT, sync);
-      window.removeEventListener('focus', sync);
+      window.removeEventListener(REPORTS_UPDATED_EVENT, onSync);
+      window.removeEventListener('focus', onSync);
     };
   }, []);
 
@@ -132,7 +129,9 @@ export function PlantMonitor() {
       setApiChart(activeReport.signalChart);
       return;
     }
-    setApiChart(readLatestApiSignalChart());
+    setApiChart(
+      latestSignalChartFromReportList(apiReports) ?? readLatestApiSignalChart(),
+    );
   }, [activeReport, apiReports]);
 
   useEffect(() => {

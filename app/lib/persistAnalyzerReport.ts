@@ -1,7 +1,9 @@
 import type { PlantAnalyzerResponse, SignalChartPayload } from './analyzerTypes';
+import { isFirebaseConfigured } from './firebase';
 import { getCurrentFirebaseUid } from './firebaseAuth';
-import { saveReportFileToFirestore } from './firestoreReports';
+import { fetchReportFilesForSessionUser, saveReportFileToFirestore } from './firestoreReports';
 import { normalizePlantAnalyzerResponse } from './normalizeAnalyzerResponse';
+import { mergeCloudAndLocalApiReports } from './reportMerge';
 import type { ReportItem, ReportStatus } from './reportTypes';
 import { getStoredUserProfile } from './session';
 
@@ -83,14 +85,14 @@ export function replacePersistedLocalApiReportsForSession(items: ReportItem[]): 
   }
 }
 
-function summaryStorageKey(): string {
+function summaryStorageKey(): string | null {
   const uid = getActiveReportStorageUid();
-  return uid ? `${LAST_ANALYSIS_SUMMARY_KEY}:${uid}` : LAST_ANALYSIS_SUMMARY_KEY;
+  return uid ? `${LAST_ANALYSIS_SUMMARY_KEY}:${uid}` : null;
 }
 
-function labelsStorageKey(): string {
+function labelsStorageKey(): string | null {
   const uid = getActiveReportStorageUid();
-  return uid ? `${PLANT_MONITOR_LABELS_KEY}:${uid}` : PLANT_MONITOR_LABELS_KEY;
+  return uid ? `${PLANT_MONITOR_LABELS_KEY}:${uid}` : null;
 }
 
 export type LastAnalysisSummary = {
@@ -219,6 +221,8 @@ async function syncReportFileToFirestore(item: ReportItem) {
 
 export function saveLastAnalysisSummary(data: PlantAnalyzerResponse, title: string): void {
   try {
+    const key = summaryStorageKey();
+    if (!key) return;
     const n = normalizePlantAnalyzerResponse(data);
     const summary: LastAnalysisSummary = {
       durum: getDurumFromPayload(n) ?? '—',
@@ -226,7 +230,7 @@ export function saveLastAnalysisSummary(data: PlantAnalyzerResponse, title: stri
       title,
       at: new Date().toISOString(),
     };
-    localStorage.setItem(summaryStorageKey(), JSON.stringify(summary));
+    localStorage.setItem(key, JSON.stringify(summary));
   } catch {
     /* ignore */
   }
@@ -234,11 +238,9 @@ export function saveLastAnalysisSummary(data: PlantAnalyzerResponse, title: stri
 
 export function readLastAnalysisSummary(): LastAnalysisSummary | null {
   try {
-    const scoped = summaryStorageKey();
-    let raw = localStorage.getItem(scoped);
-    if (!raw && scoped !== LAST_ANALYSIS_SUMMARY_KEY) {
-      raw = localStorage.getItem(LAST_ANALYSIS_SUMMARY_KEY);
-    }
+    const key = summaryStorageKey();
+    if (!key) return null;
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     return JSON.parse(raw) as LastAnalysisSummary;
   } catch {
@@ -246,7 +248,17 @@ export function readLastAnalysisSummary(): LastAnalysisSummary | null {
   }
 }
 
-/** Yereldeki API raporları, yeniden eskiye (bitki izleme seçici). */
+function sortApiReportsNewestFirst(list: ReportItem[]): ReportItem[] {
+  return list
+    .filter((r) => r.source === 'api')
+    .sort((a, b) => {
+      const ta = Date.parse(a.createdAt || `${a.date}T12:00:00`) || 0;
+      const tb = Date.parse(b.createdAt || `${b.date}T12:00:00`) || 0;
+      return tb - ta || b.id.localeCompare(a.id);
+    });
+}
+
+/** Yereldeki API raporları, yeniden eskiye (senkron; bulut dahil değil). */
 export function readApiReportsNewestFirst(): ReportItem[] {
   const uid = getActiveReportStorageUid();
   if (!uid) return [];
@@ -255,29 +267,62 @@ export function readApiReportsNewestFirst(): ReportItem[] {
     const raw = localStorage.getItem(reportsLocalStorageKeyForUid(uid));
     const parsed = raw ? JSON.parse(raw) : [];
     const list: ReportItem[] = Array.isArray(parsed) ? parsed : [];
-    return list
-      .filter(
-        (r) =>
-          r.source === 'api' &&
-          (!r.ownerUid || r.ownerUid === uid),
-      )
-      .sort((a, b) => {
-        const ta = Date.parse(a.createdAt || `${a.date}T12:00:00`) || 0;
-        const tb = Date.parse(b.createdAt || `${b.date}T12:00:00`) || 0;
-        return tb - ta || b.id.localeCompare(a.id);
-      });
+    return sortApiReportsNewestFirst(list.filter((r) => !r.ownerUid || r.ownerUid === uid));
   } catch {
     return [];
   }
 }
 
+/**
+ * Raporlar sekmesiyle aynı kaynak: Firestore’daki API raporları + yerel (henüz yalnızca yerelde olanlar).
+ * Bitki İzleme seçici bu listeyi kullanmalı; aksi halde yalnızca bulutta kalan raporlar görünmez.
+ */
+export async function fetchMergedApiReportsForSession(): Promise<ReportItem[]> {
+  const uid = getActiveReportStorageUid();
+  if (!uid) return [];
+  migrateLegacyReportsIfNeeded(uid);
+  const cachedItems = readLocalReportItemsForSession();
+  const profile = getStoredUserProfile();
+  const storageUid = profile?.uid ?? null;
+  const localApiOnly = cachedItems.filter(
+    (r) =>
+      r.source === 'api' &&
+      (!storageUid || !r.ownerUid || r.ownerUid === storageUid),
+  );
+  let cloudApi: ReportItem[] = [];
+  const fbUid = getCurrentFirebaseUid();
+  if (isFirebaseConfigured() && profile && fbUid && profile.uid === fbUid) {
+    try {
+      cloudApi = await fetchReportFilesForSessionUser({
+        uid: profile.uid,
+        role: profile.role,
+      });
+    } catch {
+      cloudApi = [];
+    }
+  }
+  const apiMerged = mergeCloudAndLocalApiReports(cloudApi, localApiOnly, {
+    viewerUid: storageUid,
+  });
+  return sortApiReportsNewestFirst(apiMerged);
+}
+
+/** Birleşik rapor listesinden en güncel signal_chart (Bitki İzleme grafik yedekleri için). */
+export function latestSignalChartFromReportList(reports: ReportItem[]): SignalChartPayload | null {
+  const withChart = reports.filter((r) => r.source === 'api' && r.signalChart?.values?.length);
+  if (withChart.length === 0) return null;
+  withChart.sort(
+    (a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime() || b.id.localeCompare(a.id),
+  );
+  return withChart[0]?.signalChart ?? null;
+}
+
 export function readMonitorCustomLabels(): Record<string, string> {
   try {
     const key = labelsStorageKey();
-    let raw = localStorage.getItem(key);
-    if (!raw && key !== PLANT_MONITOR_LABELS_KEY) {
-      raw = localStorage.getItem(PLANT_MONITOR_LABELS_KEY);
-    }
+    if (!key) return {};
+    const raw = localStorage.getItem(key);
     const o = raw ? JSON.parse(raw) : {};
     return o && typeof o === 'object' && !Array.isArray(o) ? (o as Record<string, string>) : {};
   } catch {
@@ -287,11 +332,13 @@ export function readMonitorCustomLabels(): Record<string, string> {
 
 export function setMonitorCustomLabel(reportId: string, label: string): void {
   try {
+    const key = labelsStorageKey();
+    if (!key) return;
     const m = { ...readMonitorCustomLabels() };
     const t = label.trim();
     if (t) m[reportId] = t;
     else delete m[reportId];
-    localStorage.setItem(labelsStorageKey(), JSON.stringify(m));
+    localStorage.setItem(key, JSON.stringify(m));
   } catch {
     /* ignore */
   }
