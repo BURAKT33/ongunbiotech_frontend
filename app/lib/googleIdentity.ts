@@ -52,6 +52,10 @@ export function loadGoogleIdentityScript(): Promise<void> {
   });
 }
 
+function buttonWidth(el: HTMLElement): number {
+  return Math.min(380, el.clientWidth || 380);
+}
+
 export function renderGoogleContinueButton(opts: {
   container: HTMLElement;
   clientId: string;
@@ -70,8 +74,42 @@ export function renderGoogleContinueButton(opts: {
     size: 'large',
     text: 'continue_with',
     shape: 'rectangular',
-    width: Math.min(380, opts.container.clientWidth || 380),
+    width: buttonWidth(opts.container),
     locale: 'tr',
+  });
+}
+
+/** Giriş + kayıt için iki ayrı GSI butonu (aynı OAuth akışı; metin farkı). */
+export function renderGoogleSignInAndSignUpButtons(opts: {
+  signInContainer: HTMLElement;
+  signUpContainer: HTMLElement;
+  clientId: string;
+  onCredential: (credential: string) => void;
+}): void {
+  if (!window.google?.accounts?.id) throw new Error('google_identity_not_ready');
+  window.google.accounts.id.initialize({
+    client_id: opts.clientId,
+    callback: (resp) => {
+      if (resp.credential) opts.onCredential(resp.credential);
+    },
+  });
+  opts.signInContainer.innerHTML = '';
+  opts.signUpContainer.innerHTML = '';
+  const base = {
+    theme: 'outline' as const,
+    size: 'large' as const,
+    shape: 'rectangular' as const,
+    locale: 'tr',
+  };
+  window.google.accounts.id.renderButton(opts.signInContainer, {
+    ...base,
+    text: 'signin_with',
+    width: buttonWidth(opts.signInContainer),
+  });
+  window.google.accounts.id.renderButton(opts.signUpContainer, {
+    ...base,
+    text: 'signup_with',
+    width: buttonWidth(opts.signUpContainer),
   });
 }
 
