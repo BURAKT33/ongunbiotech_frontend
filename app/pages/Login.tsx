@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Leaf, LogIn } from 'lucide-react';
 import { isFirebaseConfigured } from '../lib/firebase';
@@ -27,6 +27,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const [googleBtnLoading, setGoogleBtnLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const googleBtnRef = useRef<HTMLDivElement | null>(null);
 
@@ -82,17 +83,29 @@ export function Login() {
     }
   };
 
-  useEffect(() => {
+  const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim();
+
+  /** DOM + GSI: layout sonrası çalışsın; ref henüz null ise kısa retry (flex / StrictMode). */
+  useLayoutEffect(() => {
     let cancelled = false;
     const run = async () => {
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-      if (!clientId || !googleBtnRef.current) return;
+      if (!googleClientId) return;
+      setGoogleBtnLoading(true);
+      setGoogleError(null);
       try {
+        for (let i = 0; i < 12 && !googleBtnRef.current; i++) {
+          await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        }
+        if (cancelled) return;
+        if (!googleBtnRef.current) {
+          setGoogleError('google_button_mount_failed');
+          return;
+        }
         await loadGoogleIdentityScript();
         if (cancelled || !googleBtnRef.current) return;
         renderGoogleContinueButton({
           container: googleBtnRef.current,
-          clientId,
+          clientId: googleClientId,
           onCredential: async (credential) => {
             setGoogleError(null);
             setGoogleBusy(true);
@@ -143,13 +156,16 @@ export function Login() {
         });
       } catch (e) {
         setGoogleError((e as Error).message || 'google_script_failed');
+      } finally {
+        if (!cancelled) setGoogleBtnLoading(false);
       }
     };
-    run();
+    void run();
     return () => {
       cancelled = true;
+      googleBtnRef.current?.replaceChildren();
     };
-  }, [loginRole, navigate]);
+  }, [googleClientId, loginRole, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
@@ -185,13 +201,18 @@ export function Login() {
               <div className="w-full">
                 <div
                   ref={googleBtnRef}
-                  className={`w-full flex justify-center ${googleBusy ? 'opacity-70 pointer-events-none' : ''}`}
+                  className={`min-h-[44px] w-full flex justify-center items-center ${googleBusy ? 'opacity-70 pointer-events-none' : ''}`}
                 />
               </div>
             </div>
-            {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-              <p className="text-xs text-gray-500">
-                Google butonu için <code className="bg-gray-100 px-1 rounded">VITE_GOOGLE_CLIENT_ID</code> gerekli.
+            {googleBtnLoading && googleClientId && (
+              <p className="text-xs text-center text-gray-500">Google ile giriş yükleniyor…</p>
+            )}
+            {!googleClientId && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                Üretimde Google butonu için Vercel&apos;de{' '}
+                <code className="bg-amber-100 px-1 rounded">VITE_GOOGLE_CLIENT_ID</code> tanımlayıp{' '}
+                <strong>yeniden deploy</strong> edin (Vite değişkenleri build sırasında gömülür).
               </p>
             )}
             {googleError && (
