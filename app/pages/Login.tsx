@@ -12,6 +12,7 @@ import {
   setStoredUserProfile,
   type UserRole,
 } from '../lib/session';
+import { getGoogleWebClientId } from '../lib/googleWebClientId';
 import { loadGoogleIdentityScript, renderGoogleContinueButton } from '../lib/googleIdentity';
 import { postGoogleCredential } from '../lib/authApi';
 
@@ -83,7 +84,7 @@ export function Login() {
     }
   };
 
-  const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim();
+  const googleClientId = getGoogleWebClientId();
 
   /** DOM + GSI: layout sonrası çalışsın; ref henüz null ise kısa retry (flex / StrictMode). */
   useLayoutEffect(() => {
@@ -205,15 +206,8 @@ export function Login() {
                 />
               </div>
             </div>
-            {googleBtnLoading && googleClientId && (
+            {googleBtnLoading && (
               <p className="text-xs text-center text-gray-500">Google ile giriş yükleniyor…</p>
-            )}
-            {!googleClientId && (
-              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                Üretimde Google butonu için Vercel&apos;de{' '}
-                <code className="bg-amber-100 px-1 rounded">VITE_GOOGLE_CLIENT_ID</code> tanımlayıp{' '}
-                <strong>yeniden deploy</strong> edin (Vite değişkenleri build sırasında gömülür).
-              </p>
             )}
             {googleError && (
               <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
