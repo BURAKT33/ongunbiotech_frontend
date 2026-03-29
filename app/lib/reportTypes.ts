@@ -6,6 +6,8 @@ export type ReportSource = 'sample' | 'api';
 
 export interface ReportItem {
   id: string;
+  /** İstemciye kaydedildiği an (ISO); bitki izlemede “gelen tarih” için */
+  createdAt?: string;
   /** Analyzer istemci kimliği (Firestore ile eşleştirme) */
   clientReportId?: string;
   /** Firestore belge id */

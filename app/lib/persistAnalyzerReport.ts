@@ -7,6 +7,7 @@ import { getStoredUserProfile } from './session';
 
 export const REPORTS_STORAGE_KEY = 'plantsignal-reports';
 export const LAST_ANALYSIS_SUMMARY_KEY = 'plantsignal-last-analysis-summary';
+export const PLANT_MONITOR_LABELS_KEY = 'plantsignal-monitor-labels';
 export const REPORTS_UPDATED_EVENT = 'plantsignal-reports-updated';
 
 export type LastAnalysisSummary = {
@@ -75,6 +76,7 @@ export function buildReportItemFromAnalyzer(
   return {
     id,
     clientReportId: id,
+    createdAt: new Date().toISOString(),
     title,
     date,
     plant,
@@ -150,6 +152,64 @@ export function readLastAnalysisSummary(): LastAnalysisSummary | null {
   } catch {
     return null;
   }
+}
+
+/** Yereldeki API raporları, yeniden eskiye (bitki izleme seçici). */
+export function readApiReportsNewestFirst(): ReportItem[] {
+  try {
+    const raw = localStorage.getItem(REPORTS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const list: ReportItem[] = Array.isArray(parsed) ? parsed : [];
+    return list
+      .filter((r) => r.source === 'api')
+      .sort((a, b) => {
+        const ta = Date.parse(a.createdAt || `${a.date}T12:00:00`) || 0;
+        const tb = Date.parse(b.createdAt || `${b.date}T12:00:00`) || 0;
+        return tb - ta || b.id.localeCompare(a.id);
+      });
+  } catch {
+    return [];
+  }
+}
+
+export function readMonitorCustomLabels(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(PLANT_MONITOR_LABELS_KEY);
+    const o = raw ? JSON.parse(raw) : {};
+    return o && typeof o === 'object' && !Array.isArray(o) ? (o as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function setMonitorCustomLabel(reportId: string, label: string): void {
+  try {
+    const m = { ...readMonitorCustomLabels() };
+    const t = label.trim();
+    if (t) m[reportId] = t;
+    else delete m[reportId];
+    localStorage.setItem(PLANT_MONITOR_LABELS_KEY, JSON.stringify(m));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function formatMonitorReportButtonLabel(
+  report: ReportItem,
+  customById: Record<string, string>,
+): string {
+  const custom = customById[report.id]?.trim();
+  if (custom) return custom;
+  const ts = report.createdAt
+    ? new Date(report.createdAt).toLocaleString('tr-TR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : report.date;
+  return `${ts} · ${report.plant}`;
 }
 
 /** Bitki izlemede göstermek için en son API raporundaki signal_chart */

@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Activity, Thermometer, Wind, Calendar } from 'lucide-react';
 import type { SignalChartPayload } from '../../lib/analyzerTypes';
+import type { ReportItem } from '../../lib/reportTypes';
 import {
+  formatMonitorReportButtonLabel,
+  readApiReportsNewestFirst,
   readLastAnalysisSummary,
   readLatestApiSignalChart,
+  readMonitorCustomLabels,
   REPORTS_UPDATED_EVENT,
+  setMonitorCustomLabel,
   type LastAnalysisSummary,
 } from '../../lib/persistAnalyzerReport';
 import { ReportSignalCharts } from './ReportSignalCharts';
@@ -38,6 +43,8 @@ type PlantHistoryRow = {
   sicaklik: number;
   statusText: string;
   statusTone: 'ok' | 'mid' | 'warn';
+  rowKey: string;
+  fromReport?: boolean;
 };
 type PlantProfile = {
   id: string;
@@ -78,10 +85,10 @@ const plantProfiles: PlantProfile[] = [
       { time: 'Şimdi', elektrik: 85, nem: 38 },
     ],
     history: [
-      { timeLabel: 'Bugün, 14:30', elektrik: 85, nem: 38, sicaklik: 25, statusText: 'Optimal', statusTone: 'ok' },
-      { timeLabel: 'Bugün, 12:30', elektrik: 82, nem: 41, sicaklik: 26, statusText: 'İyi', statusTone: 'ok' },
-      { timeLabel: 'Bugün, 10:30', elektrik: 78, nem: 44, sicaklik: 24, statusText: 'İyi', statusTone: 'ok' },
-      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 48, sicaklik: 22, statusText: 'Orta', statusTone: 'mid' },
+      { timeLabel: 'Bugün, 14:30', elektrik: 85, nem: 38, sicaklik: 25, statusText: 'Optimal', statusTone: 'ok', rowKey: 'd1-1' },
+      { timeLabel: 'Bugün, 12:30', elektrik: 82, nem: 41, sicaklik: 26, statusText: 'İyi', statusTone: 'ok', rowKey: 'd1-2' },
+      { timeLabel: 'Bugün, 10:30', elektrik: 78, nem: 44, sicaklik: 24, statusText: 'İyi', statusTone: 'ok', rowKey: 'd1-3' },
+      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 48, sicaklik: 22, statusText: 'Orta', statusTone: 'mid', rowKey: 'd1-4' },
     ],
   },
   {
@@ -106,10 +113,10 @@ const plantProfiles: PlantProfile[] = [
       { time: 'Şimdi', elektrik: 73, nem: 54 },
     ],
     history: [
-      { timeLabel: 'Bugün, 14:30', elektrik: 73, nem: 54, sicaklik: 27, statusText: 'Dikkat', statusTone: 'mid' },
-      { timeLabel: 'Bugün, 12:30', elektrik: 76, nem: 50, sicaklik: 28, statusText: 'Dikkat', statusTone: 'mid' },
-      { timeLabel: 'Bugün, 10:30', elektrik: 74, nem: 52, sicaklik: 27, statusText: 'Orta', statusTone: 'mid' },
-      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 53, sicaklik: 26, statusText: 'İyi', statusTone: 'ok' },
+      { timeLabel: 'Bugün, 14:30', elektrik: 73, nem: 54, sicaklik: 27, statusText: 'Dikkat', statusTone: 'mid', rowKey: 'b1-1' },
+      { timeLabel: 'Bugün, 12:30', elektrik: 76, nem: 50, sicaklik: 28, statusText: 'Dikkat', statusTone: 'mid', rowKey: 'b1-2' },
+      { timeLabel: 'Bugün, 10:30', elektrik: 74, nem: 52, sicaklik: 27, statusText: 'Orta', statusTone: 'mid', rowKey: 'b1-3' },
+      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 53, sicaklik: 26, statusText: 'İyi', statusTone: 'ok', rowKey: 'b1-4' },
     ],
   },
   {
@@ -134,10 +141,10 @@ const plantProfiles: PlantProfile[] = [
       { time: 'Şimdi', elektrik: 61, nem: 46 },
     ],
     history: [
-      { timeLabel: 'Bugün, 14:30', elektrik: 61, nem: 46, sicaklik: 30, statusText: 'Kritik', statusTone: 'warn' },
-      { timeLabel: 'Bugün, 12:30', elektrik: 62, nem: 45, sicaklik: 31, statusText: 'Kritik', statusTone: 'warn' },
-      { timeLabel: 'Bugün, 10:30', elektrik: 64, nem: 46, sicaklik: 30, statusText: 'Dikkat', statusTone: 'mid' },
-      { timeLabel: 'Bugün, 08:30', elektrik: 66, nem: 47, sicaklik: 29, statusText: 'Dikkat', statusTone: 'mid' },
+      { timeLabel: 'Bugün, 14:30', elektrik: 61, nem: 46, sicaklik: 30, statusText: 'Kritik', statusTone: 'warn', rowKey: 'd2-1' },
+      { timeLabel: 'Bugün, 12:30', elektrik: 62, nem: 45, sicaklik: 31, statusText: 'Kritik', statusTone: 'warn', rowKey: 'd2-2' },
+      { timeLabel: 'Bugün, 10:30', elektrik: 64, nem: 46, sicaklik: 30, statusText: 'Dikkat', statusTone: 'mid', rowKey: 'd2-3' },
+      { timeLabel: 'Bugün, 08:30', elektrik: 66, nem: 47, sicaklik: 29, statusText: 'Dikkat', statusTone: 'mid', rowKey: 'd2-4' },
     ],
   },
   {
@@ -162,23 +169,74 @@ const plantProfiles: PlantProfile[] = [
       { time: 'Şimdi', elektrik: 79, nem: 68 },
     ],
     history: [
-      { timeLabel: 'Bugün, 14:30', elektrik: 79, nem: 68, sicaklik: 23, statusText: 'İyi', statusTone: 'ok' },
-      { timeLabel: 'Bugün, 12:30', elektrik: 77, nem: 68, sicaklik: 24, statusText: 'İyi', statusTone: 'ok' },
-      { timeLabel: 'Bugün, 10:30', elektrik: 74, nem: 69, sicaklik: 23, statusText: 'Optimal', statusTone: 'ok' },
-      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 70, sicaklik: 22, statusText: 'Optimal', statusTone: 'ok' },
+      { timeLabel: 'Bugün, 14:30', elektrik: 79, nem: 68, sicaklik: 23, statusText: 'İyi', statusTone: 'ok', rowKey: 's1-1' },
+      { timeLabel: 'Bugün, 12:30', elektrik: 77, nem: 68, sicaklik: 24, statusText: 'İyi', statusTone: 'ok', rowKey: 's1-2' },
+      { timeLabel: 'Bugün, 10:30', elektrik: 74, nem: 69, sicaklik: 23, statusText: 'Optimal', statusTone: 'ok', rowKey: 's1-3' },
+      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 70, sicaklik: 22, statusText: 'Optimal', statusTone: 'ok', rowKey: 's1-4' },
     ],
   },
 ];
 
+function reportToHistoryRow(r: ReportItem, labels: Record<string, string>): PlantHistoryRow {
+  const tone: PlantHistoryRow['statusTone'] =
+    r.status === 'Uyarı' ? 'warn' : r.status === 'Tamamlandı' ? 'ok' : 'mid';
+  const nemApprox =
+    typeof r.stressScore === 'number' && Number.isFinite(r.stressScore)
+      ? Math.round(Math.min(99, Math.max(0, 55 - r.stressScore * 8)))
+      : 0;
+  return {
+    timeLabel: formatMonitorReportButtonLabel(r, labels),
+    elektrik: r.score,
+    nem: nemApprox,
+    sicaklik: 0,
+    statusText: r.analyzerDurum || r.status,
+    statusTone: tone,
+    rowKey: `report-${r.id}`,
+    fromReport: true,
+  };
+}
+
+function reportStatusToPlantStatus(s: ReportItem['status']): PlantStatus {
+  if (s === 'Uyarı') return 'critical';
+  if (s === 'Tamamlandı') return 'healthy';
+  return 'warning';
+}
+
+function chartToSeries(chart: SignalChartPayload | null | undefined, maxPoints = 48): PlantSeriesPoint[] {
+  const v = chart?.values;
+  if (!v?.length) return [];
+  const slice = v.length > maxPoints ? v.slice(-maxPoints) : v;
+  return slice.map((val, i) => ({
+    time: `${i + 1}`,
+    elektrik: typeof val === 'number' && Number.isFinite(val) ? val : 0,
+    nem: 0,
+  }));
+}
+
 export function PlantMonitor() {
-  const [selectedPlant, setSelectedPlant] = useState('domates-1');
+  /** demo:domates-1 | report:<ReportItem.id> */
+  const [selectedKey, setSelectedKey] = useState<string>('demo:domates-1');
   const [lastSummary, setLastSummary] = useState<LastAnalysisSummary | null>(null);
   const [apiChart, setApiChart] = useState<SignalChartPayload | null>(null);
+  const [apiReports, setApiReports] = useState<ReportItem[]>([]);
+  const [monitorLabels, setMonitorLabels] = useState<Record<string, string>>(() => readMonitorCustomLabels());
+  const [labelDraft, setLabelDraft] = useState('');
 
   useEffect(() => {
     const sync = () => {
+      const reports = readApiReportsNewestFirst();
+      setApiReports(reports);
       setLastSummary(readLastAnalysisSummary());
-      setApiChart(readLatestApiSignalChart());
+      setMonitorLabels(readMonitorCustomLabels());
+      setSelectedKey((prev) => {
+        if (prev.startsWith('report:')) {
+          const id = prev.slice(7);
+          if (reports.some((r) => r.id === id)) return prev;
+          if (reports.length > 0) return `report:${reports[0].id}`;
+          return 'demo:domates-1';
+        }
+        return prev;
+      });
     };
     sync();
     window.addEventListener(REPORTS_UPDATED_EVENT, sync);
@@ -189,7 +247,73 @@ export function PlantMonitor() {
     };
   }, []);
 
-  const selectedPlantData = plantProfiles.find((p) => p.id === selectedPlant) ?? plantProfiles[0];
+  const activeReport = selectedKey.startsWith('report:')
+    ? apiReports.find((r) => r.id === selectedKey.slice(7)) ?? null
+    : null;
+
+  useEffect(() => {
+    if (activeReport?.signalChart?.values?.length) {
+      setApiChart(activeReport.signalChart);
+      return;
+    }
+    setApiChart(readLatestApiSignalChart());
+  }, [activeReport, apiReports]);
+
+  useEffect(() => {
+    if (activeReport) {
+      setLabelDraft(monitorLabels[activeReport.id] ?? '');
+    } else {
+      setLabelDraft('');
+    }
+  }, [activeReport, monitorLabels]);
+
+  const demoId = selectedKey.startsWith('demo:') ? selectedKey.slice(5) : null;
+  const selectedPlantData = plantProfiles.find((p) => p.id === (demoId || 'domates-1')) ?? plantProfiles[0];
+
+  const reportHistoryRows = apiReports.map((r) => reportToHistoryRow(r, monitorLabels));
+  const mergedHistory: PlantHistoryRow[] = [
+    ...reportHistoryRows,
+    ...(demoId ? selectedPlantData.history : []),
+  ];
+
+  const displayMetrics = activeReport
+    ? {
+        status: reportStatusToPlantStatus(activeReport.status),
+        elektrikMv: activeReport.score,
+        elektrikTrend: {
+          text:
+            typeof activeReport.stressScore === 'number'
+              ? `Stres ${activeReport.stressScore.toFixed(2)}`
+              : '—',
+          tone: 'flat' as const,
+          suffix: 'Analyzer',
+        },
+        sicaklikC: 0,
+        sicaklikNote: activeReport.analyzerDurum || activeReport.status,
+        havaNemiPct:
+          typeof activeReport.stressScore === 'number' && Number.isFinite(activeReport.stressScore)
+            ? Math.round(Math.min(99, Math.max(0, 55 - activeReport.stressScore * 8)))
+            : 0,
+        havaNemiNote: 'Türetilmiş gösterge (stres)',
+        sonSulamaSaat: 0,
+        sulamaNote: '—',
+        realtimeData:
+          chartToSeries(activeReport.signalChart).length > 0
+            ? chartToSeries(activeReport.signalChart)
+            : selectedPlantData.realtimeData,
+      }
+    : {
+        status: selectedPlantData.status,
+        elektrikMv: selectedPlantData.elektrikMv,
+        elektrikTrend: selectedPlantData.elektrikTrend,
+        sicaklikC: selectedPlantData.sicaklikC,
+        sicaklikNote: selectedPlantData.sicaklikNote,
+        havaNemiPct: selectedPlantData.havaNemiPct,
+        havaNemiNote: selectedPlantData.havaNemiNote,
+        sonSulamaSaat: selectedPlantData.sonSulamaSaat,
+        sulamaNote: selectedPlantData.sulamaNote,
+        realtimeData: selectedPlantData.realtimeData,
+      };
 
   const getStatusColor = (status: PlantStatus) => {
     switch (status) {
@@ -210,9 +334,9 @@ export function PlantMonitor() {
   };
 
   const trendClass =
-    selectedPlantData.elektrikTrend.tone === 'up'
+    displayMetrics.elektrikTrend.tone === 'up'
       ? 'text-green-600'
-      : selectedPlantData.elektrikTrend.tone === 'down'
+      : displayMetrics.elektrikTrend.tone === 'down'
         ? 'text-red-600'
         : 'text-gray-600';
 
@@ -256,29 +380,102 @@ export function PlantMonitor() {
         </div>
       )}
 
-      {/* Plant Selector */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Bitki Seçin</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {plantProfiles.map((plant) => (
-            <button
-              key={plant.id}
-              onClick={() => setSelectedPlant(plant.id)}
-              className={`p-3 rounded-lg border-2 text-left transition-all ${
-                selectedPlant === plant.id
-                  ? 'border-green-600 bg-green-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <Activity className={`w-5 h-5 ${selectedPlant === plant.id ? 'text-green-600' : 'text-gray-400'}`} />
-                <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(plant.status)}`}>
-                  {getStatusText(plant.status)}
-                </span>
+      {/* Plant / oturum seçici */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-5">
+        {apiReports.length > 0 && (
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Analyzer raporları (gelen tarih)</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Veri senkron ile eklenen oturumlar. İsterseniz seçtikten sonra görünen ad verebilirsiniz.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {apiReports.map((r) => {
+                const key = `report:${r.id}`;
+                const sel = selectedKey === key;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setSelectedKey(key)}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${
+                      sel ? 'border-green-600 bg-green-50' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <Activity className={`w-5 h-5 ${sel ? 'text-green-600' : 'text-gray-400'}`} />
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(reportStatusToPlantStatus(r.status))}`}
+                      >
+                        {getStatusText(reportStatusToPlantStatus(r.status))}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-900 leading-snug">
+                      {formatMonitorReportButtonLabel(r, monitorLabels)}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+            {activeReport && (
+              <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-end">
+                <div className="flex-1">
+                  <label htmlFor="monitor-label" className="text-xs font-medium text-gray-600 block mb-1">
+                    Görünen ad (isteğe bağlı)
+                  </label>
+                  <input
+                    id="monitor-label"
+                    type="text"
+                    value={labelDraft}
+                    onChange={(e) => setLabelDraft(e.target.value)}
+                    onBlur={() => {
+                      setMonitorCustomLabel(activeReport.id, labelDraft);
+                      setMonitorLabels(readMonitorCustomLabels());
+                    }}
+                    placeholder="Örn. Sera A — ölçüm 1"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMonitorCustomLabel(activeReport.id, labelDraft);
+                    setMonitorLabels(readMonitorCustomLabels());
+                  }}
+                  className="px-4 py-2 text-sm font-medium bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
+                >
+                  Adı kaydet
+                </button>
               </div>
-              <p className="text-sm font-medium text-gray-900">{plant.name}</p>
-            </button>
-          ))}
+            )}
+          </div>
+        )}
+
+        <div>
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Örnek seralar (demo)</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {plantProfiles.map((plant) => {
+              const key = `demo:${plant.id}`;
+              const sel = selectedKey === key;
+              return (
+                <button
+                  key={plant.id}
+                  type="button"
+                  onClick={() => setSelectedKey(key)}
+                  className={`p-3 rounded-lg border-2 text-left transition-all ${
+                    sel ? 'border-green-600 bg-green-50' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <Activity className={`w-5 h-5 ${sel ? 'text-green-600' : 'text-gray-400'}`} />
+                    <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(plant.status)}`}>
+                      {getStatusText(plant.status)}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">{plant.name}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -290,13 +487,17 @@ export function PlantMonitor() {
               <Activity className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-500">Elektriksel Sinyal</p>
-              <p className="text-xl font-bold text-gray-900">{selectedPlantData.elektrikMv} mV</p>
+              <p className="text-xs text-gray-500">
+                {activeReport ? 'Sağlık skoru (panel)' : 'Elektriksel Sinyal'}
+              </p>
+              <p className="text-xl font-bold text-gray-900">
+                {activeReport ? `${displayMetrics.elektrikMv}` : `${displayMetrics.elektrikMv} mV`}
+              </p>
             </div>
           </div>
           <div className="text-xs text-gray-600">
-            <span className={trendClass}>{selectedPlantData.elektrikTrend.text}</span>{' '}
-            {selectedPlantData.elektrikTrend.suffix}
+            <span className={trendClass}>{displayMetrics.elektrikTrend.text}</span>{' '}
+            {displayMetrics.elektrikTrend.suffix}
           </div>
         </div>
 
@@ -307,11 +508,13 @@ export function PlantMonitor() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Sıcaklık</p>
-              <p className="text-xl font-bold text-gray-900">{selectedPlantData.sicaklikC}°C</p>
+              <p className="text-xl font-bold text-gray-900">
+                {activeReport && displayMetrics.sicaklikC === 0 ? '—' : `${displayMetrics.sicaklikC}°C`}
+              </p>
             </div>
           </div>
           <div className="text-xs text-gray-600">
-            <span className="text-gray-600">→</span> {selectedPlantData.sicaklikNote}
+            <span className="text-gray-600">→</span> {displayMetrics.sicaklikNote}
           </div>
         </div>
 
@@ -322,11 +525,11 @@ export function PlantMonitor() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Hava Nemi</p>
-              <p className="text-xl font-bold text-gray-900">%{selectedPlantData.havaNemiPct}</p>
+              <p className="text-xl font-bold text-gray-900">%{displayMetrics.havaNemiPct}</p>
             </div>
           </div>
           <div className="text-xs text-gray-600">
-            <span className="text-gray-600">→</span> {selectedPlantData.havaNemiNote}
+            <span className="text-gray-600">→</span> {displayMetrics.havaNemiNote}
           </div>
         </div>
 
@@ -337,12 +540,12 @@ export function PlantMonitor() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Son Sulama</p>
-              <p className="text-xl font-bold text-gray-900">{selectedPlantData.sonSulamaSaat} saat</p>
+              <p className="text-xl font-bold text-gray-900">
+                {activeReport && displayMetrics.sonSulamaSaat === 0 ? '—' : `${displayMetrics.sonSulamaSaat} saat`}
+              </p>
             </div>
           </div>
-          <div className="text-xs text-gray-600">
-            {selectedPlantData.sulamaNote}
-          </div>
+          <div className="text-xs text-gray-600">{displayMetrics.sulamaNote}</div>
         </div>
       </div>
 
@@ -354,7 +557,7 @@ export function PlantMonitor() {
             Günlük Trend (Elektriksel Sinyal)
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={selectedPlantData.realtimeData}>
+            <BarChart data={displayMetrics.realtimeData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="time" stroke="#9ca3af" />
               <YAxis stroke="#9ca3af" />
@@ -396,7 +599,7 @@ export function PlantMonitor() {
             </p>
           )}
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={selectedPlantData.realtimeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <LineChart data={displayMetrics.realtimeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="time" stroke="#9ca3af" />
               <YAxis
@@ -427,32 +630,51 @@ export function PlantMonitor() {
 
       {/* Historical Data Table */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Son Ölçümler</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">Son Ölçümler</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Üstte Analyzer ile gelen oturumlar (yeniden eskiye); altta seçili demo seraya ait örnek satırlar.
+        </p>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Zaman</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Elektrik (mV)</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Zaman / oturum</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                  {activeReport ? 'Skor' : 'Elektrik (mV)'}
+                </th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Nem (%)</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Sıcaklık (°C)</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Durum</th>
               </tr>
             </thead>
             <tbody>
-              {selectedPlantData.history.map((row, idx) => (
-                <tr key={row.timeLabel} className={`${idx < selectedPlantData.history.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50`}>
-                  <td className="py-3 px-4 text-sm text-gray-900">{row.timeLabel}</td>
-                  <td className="py-3 px-4 text-sm text-gray-900">{row.elektrik}</td>
-                  <td className="py-3 px-4 text-sm text-gray-900">{row.nem}</td>
-                  <td className="py-3 px-4 text-sm text-gray-900">{row.sicaklik}</td>
-                  <td className="py-3 px-4">
-                    <span className={`text-xs px-2 py-1 rounded-full ${rowStatusClass(row.statusTone)}`}>
-                      {row.statusText}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {mergedHistory.map((row, idx) => {
+                const highlight =
+                  activeReport && row.fromReport && row.rowKey === `report-${activeReport.id}`;
+                return (
+                  <tr
+                    key={row.rowKey}
+                    className={`${idx < mergedHistory.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 ${
+                      highlight ? 'bg-green-50/80' : ''
+                    }`}
+                  >
+                    <td className="py-3 px-4 text-sm text-gray-900">
+                      {row.timeLabel}
+                      {row.fromReport && (
+                        <span className="ml-2 text-[10px] uppercase text-emerald-700 font-semibold">Analyzer</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-900">{row.elektrik}</td>
+                    <td className="py-3 px-4 text-sm text-gray-900">{row.fromReport && row.nem === 0 ? '—' : row.nem}</td>
+                    <td className="py-3 px-4 text-sm text-gray-900">{row.sicaklik === 0 ? '—' : row.sicaklik}</td>
+                    <td className="py-3 px-4">
+                      <span className={`text-xs px-2 py-1 rounded-full ${rowStatusClass(row.statusTone)}`}>
+                        {row.statusText}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
