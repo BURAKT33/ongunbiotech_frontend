@@ -1,0 +1,76 @@
+================================================================================
+PlantSignal — Vercel (frontend) + Cloud Run (backend) + Firebase (Firestore/Storage)
+================================================================================
+
+Bağlantı özeti
+--------------
+- Tarayıcı → Firebase: doğrudan (VITE_FIREBASE_*). Firestore/Storage kuralları Firebase Console’da.
+- Tarayıcı → Backend: VITE_API_BASE_URL = Cloud Run hizmet URL’si (sonunda / yok).
+- Backend → Plant Analyzer: PLANT_ANALYZER_URL (Cloud Run ortam değişkeni).
+
+Vercel (frontend) — Environment Variables
+-----------------------------------------
+Aşağıdakileri Production (ve gerekirse Preview) için ekleyin:
+
+  VITE_API_BASE_URL=https://backend-service-635662286956.europe-west1.run.app
+  VITE_GOOGLE_CLIENT_ID=....apps.googleusercontent.com
+  VITE_FIREBASE_API_KEY=
+  VITE_FIREBASE_AUTH_DOMAIN=ongunbiotech.firebaseapp.com
+  VITE_FIREBASE_PROJECT_ID=ongunbiotech
+  VITE_FIREBASE_STORAGE_BUCKET=ongunbiotech.firebasestorage.app
+  VITE_FIREBASE_MESSAGING_SENDER_ID=
+  VITE_FIREBASE_APP_ID=
+  VITE_FIREBASE_MEASUREMENT_ID=   (isteğe bağlı)
+
+Deploy sonrası yeniden build edin.
+
+Cloud Run (backend) — Ortam değişkenleri
+-----------------------------------------
+  GOOGLE_CLIENT_ID          → VITE_GOOGLE_CLIENT_ID ile AYNI (Web client ID)
+  CORS_ORIGIN               → https://ongunbiotech.com
+                            → birden fazla origin: virgülle (ör. https://ongunbiotech.com,https://www.ongunbiotech.com)
+  CORS_ALLOW_VERCEL_PREVIEWS → 1 (isteğe bağlı; *.vercel.app preview CORS)
+  PLANT_ANALYZER_URL        → https://plant-analyzer-635662286956.europe-west1.run.app/run
+  PORT                      → Cloud Run otomatik verir (8080); dokunmayın
+
+Google Cloud Console — OAuth (Web client)
+-----------------------------------------
+Authorized JavaScript origins:
+  https://ongunbiotech.com
+  https://www.ongunbiotech.com   (www kullanıyorsanız)
+  https://<proje>.vercel.app     (Vercel preview; isteğe bağlı)
+  http://localhost:5173          (yerel test)
+
+Docker imajı + Artifact Registry + Cloud Run (örnek)
+----------------------------------------------------
+Değişkenleri kendi proje / bölge / repo adınıza göre değiştirin.
+
+  set PROJECT=ongunbiotech
+  set REGION=europe-west1
+  set REPO=containers
+  set IMAGE=ongunbiotech-api
+
+  gcloud config set project %PROJECT%
+  gcloud services enable run.googleapis.com artifactregistry.googleapis.com
+
+  gcloud artifacts repositories create %REPO% --repository-format=docker --location=%REGION%  (yoksa)
+
+  cd <repo kökü>
+  docker build -f backend/Dockerfile -t %REGION%-docker.pkg.dev/%PROJECT%/%REPO%/%IMAGE%:latest ./backend
+
+  (Alternatif: cd backend  →  docker build -t %REGION%-docker.pkg.dev/%PROJECT%/%REPO%/%IMAGE%:latest .)
+
+  gcloud builds submit (backend klasöründeyken): bağlam . olduğu için yukarıdaki Dockerfile ile uyumludur.
+  docker push %REGION%-docker.pkg.dev/%PROJECT%/%REPO%/%IMAGE%:latest
+
+  gcloud run deploy %IMAGE% ^
+    --image %REGION%-docker.pkg.dev/%PROJECT%/%REPO%/%IMAGE%:latest ^
+    --region %REGION% ^
+    --allow-unauthenticated ^
+    --set-env-vars "GOOGLE_CLIENT_ID=....apps.googleusercontent.com,CORS_ORIGIN=https://ongunbiotech.com,PLANT_ANALYZER_URL=https://plant-analyzer-635662286956.europe-west1.run.app/run,CORS_ALLOW_VERCEL_PREVIEWS=1"
+
+Çıkan Service URL’yi kopyalayıp Vercel’de VITE_API_BASE_URL olarak kullanın.
+
+Not: Backend, Firebase sunucusu değildir; Firestore/Storage’a doğrudan bağlanmaz. Tüm Firebase erişimi frontend SDK ile olur.
+
+================================================================================

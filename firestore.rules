@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isEngineer() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        userDoc(request.auth.uid).role == 'muhendis';
+    }
+
+    function engagementId(engineerUid, farmerUid) {
+      return engineerUid + '_' + farmerUid;
+    }
+
+    function engineerLinkedToFarmer(farmerUid) {
+      return exists(/databases/$(database)/documents/engagements/$(engagementId(request.auth.uid, farmerUid))) &&
+        get(/databases/$(database)/documents/engagements/$(engagementId(request.auth.uid, farmerUid))).data.active == true;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /engagements/{linkId} {
+      allow read: if signedIn() && (
+        resource.data.engineerUid == request.auth.uid ||
+        resource.data.farmerUid == request.auth.uid
+      );
+      allow create: if signedIn() &&
+        request.resource.data.engineerUid == request.auth.uid &&
+        isEngineer();
+      allow update, delete: if false;
+    }
+
+    match /reports/{docId} {
+      allow create: if signedIn() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.keys().hasAll(['ownerUid', 'ownerRole', 'reportFileName', 'reportMarkdown', 'clientReportId', 'title', 'date', 'plant', 'score', 'source', 'status', 'fileMimeType']);
+
+      allow read: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        (isEngineer() &&
+          resource.data.ownerRole == 'ciftci' &&
+          engineerLinkedToFarmer(resource.data.ownerUid))
+      );
+
+      allow update, delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+  }
+}
