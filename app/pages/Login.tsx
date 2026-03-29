@@ -4,7 +4,6 @@ import { Leaf, LogIn, UserPlus } from 'lucide-react';
 import { isFirebaseConfigured } from '../lib/firebase';
 import {
   formatFirebaseAuthError,
-  getSignInMethodsForEmail,
   registerWithEmailPassword,
   signInFirebaseWithGoogleIdToken,
   signInWithEmailPasswordLogin,
@@ -41,9 +40,6 @@ export function Login() {
   const googleBtnRef = useRef<HTMLDivElement | null>(null);
 
   const isEngineer = loginRole === 'muhendis';
-
-  const authModeRef = useRef(authMode);
-  authModeRef.current = authMode;
 
   const finishSessionAndNavigate = async (opts: {
     uid: string;
@@ -84,25 +80,7 @@ export function Login() {
       const em = result.user.email ?? '';
 
       if (isFirebaseConfigured()) {
-        if (authModeRef.current === 'login' && em.trim()) {
-          try {
-            const methods = await getSignInMethodsForEmail(em);
-            if (methods.length === 0) {
-              setGoogleError(
-                'Bu Google hesabı Firebase’de yok. Önce «Kayıt ol» sekmesinden üye olun.',
-              );
-              return;
-            }
-            if (!methods.includes('google.com')) {
-              setGoogleError(
-                'Bu e-posta Google ile değil, şifre ile kayıtlı. E-posta ile giriş kullanın.',
-              );
-              return;
-            }
-          } catch {
-            /* devam — enumeration koruması vb. */
-          }
-        }
+        /* fetchSignInMethodsForEmail, enumeration koruması açıkken [] döner — girişi yanlış engeller. */
         const fbUser = await signInFirebaseWithGoogleIdToken(credential);
         if (!fbUser) {
           setGoogleError('Firebase Google oturumu açılamadı (Authentication → Google açık olmalı).');
@@ -160,17 +138,6 @@ export function Login() {
 
     try {
       if (authMode === 'register') {
-        try {
-          const existing = await getSignInMethodsForEmail(email);
-          if (existing.length > 0) {
-            setLoginError(
-              'Bu e-posta zaten Firebase’de kayıtlı. «Giriş» sekmesini veya Google ile girişi kullanın.',
-            );
-            return;
-          }
-        } catch {
-          /* enumerate koruması vb. — devam, createUser hata verir */
-        }
         const user = await registerWithEmailPassword(email, password, defaultDisplayName);
         const em = user.email || email;
         const name = user.displayName || defaultDisplayName;
@@ -181,23 +148,6 @@ export function Login() {
           role: loginRole,
         });
       } else {
-        try {
-          const methods = await getSignInMethodsForEmail(email);
-          if (methods.length === 0) {
-            setLoginError(
-              'Bu e-posta Firebase’de kayıtlı değil. Önce «Kayıt ol» sekmesinden hesap oluşturun.',
-            );
-            return;
-          }
-          if (!methods.includes('password')) {
-            setLoginError(
-              'Bu hesap e-posta şifresi ile kayıtlı değil (yalnızca Google vb.). Google ile giriş yapın.',
-            );
-            return;
-          }
-        } catch {
-          /* ön kontrol başarısızsa doğrudan sign-in dene */
-        }
         const user = await signInWithEmailPasswordLogin(email, password);
         const em = user.email || email;
         const name = user.displayName || em.split('@')[0] || 'Kullanıcı';
