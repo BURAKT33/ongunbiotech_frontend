@@ -86,13 +86,16 @@ export function formatFirebaseAuthError(err: unknown): string {
       ? (err as { code: string }).code
       : '';
   const map: Record<string, string> = {
-    'auth/email-already-in-use': 'Bu e-posta ile zaten bir hesap var.',
+    'auth/email-already-in-use': 'Bu e-posta ile zaten bir hesap var. Giriş sekmesini kullanın.',
     'auth/invalid-email': 'Geçersiz e-posta adresi.',
     'auth/weak-password': 'Şifre çok zayıf (en az 6 karakter).',
-    'auth/user-not-found': 'Bu e-posta ile kayıtlı kullanıcı yok.',
-    'auth/wrong-password': 'Şifre hatalı.',
+    /* Firebase çoğu projede user-not-found yerine invalid-credential döner; ikisini de “yanlış bilgi” diye anlatıyoruz. */
+    'auth/user-not-found':
+      'Giriş başarısız. E-posta ve şifreyi kontrol edin; hesabınız yoksa «Kayıt ol» sekmesinden oluşturun.',
+    'auth/wrong-password':
+      'Giriş başarısız. Şifreyi kontrol edin veya Google ile kayıt olduysanız Google butonunu kullanın.',
     'auth/invalid-credential':
-      'Giriş başarısız: hesap yok, şifre yanlış veya bu e-posta yalnızca Google ile kayıtlı olabilir.',
+      'Giriş başarısız. E-posta ve şifreyi kontrol edin; hesap yalnızca Google ile açıldıysa Google ile giriş yapın. Yeni kullanıcıysanız «Kayıt ol» sekmesini kullanın.',
     'auth/too-many-requests': 'Çok fazla deneme. Lütfen sonra tekrar deneyin.',
     'auth/operation-not-allowed': 'Firebase Console’da E-posta/şifre veya Google ile giriş açık olmalı.',
   };

@@ -163,16 +163,6 @@ export function Login() {
     }
   };
 
-  const fillDemoCredentials = () => {
-    if (isEngineer) {
-      setEmail('deniz.yilmaz@plantsignal.com');
-      setPassword('demo123');
-    } else {
-      setEmail('ahmet@ciftlik.com');
-      setPassword('demo123');
-    }
-  };
-
   const googleClientId = getGoogleWebClientId();
 
   useLayoutEffect(() => {
@@ -398,22 +388,6 @@ export function Login() {
               )}
             </button>
           </form>
-
-          {authMode === 'login' && (
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 mb-2">
-                <strong>Demo:</strong> Örnek bilgilerle formu doldurur (gerçek Firebase hesabı
-                değilse giriş başarısız olur).
-              </p>
-              <button
-                type="button"
-                onClick={fillDemoCredentials}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Demo bilgilerini kullan
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="text-center mt-6">
