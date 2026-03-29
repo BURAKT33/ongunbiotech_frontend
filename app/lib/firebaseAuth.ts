@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
   getAuth,
   GoogleAuthProvider,
   signInAnonymously,
@@ -67,6 +68,17 @@ export async function signInWithEmailPasswordLogin(email: string, password: stri
   return user;
 }
 
+/**
+ * E-posta için kayıtlı oturum açma yöntemleri (password, google.com, …).
+ * Projede “E-posta kaydı” açıksa yoksa genelde [] döner.
+ * Email enumeration koruması açıksa sonuçlar yanıltıcı olabilir; o durumda `signInWithEmailAndPassword` yine doğrular.
+ */
+export async function getSignInMethodsForEmail(email: string): Promise<string[]> {
+  const auth = getFirebaseAuth();
+  if (!auth) throw new Error('firebase_auth_unavailable');
+  return fetchSignInMethodsForEmail(auth, email.trim());
+}
+
 /** FirebaseAuth hata kodlarını kısa Türkçe mesaja çevirir. */
 export function formatFirebaseAuthError(err: unknown): string {
   const code =
@@ -79,7 +91,8 @@ export function formatFirebaseAuthError(err: unknown): string {
     'auth/weak-password': 'Şifre çok zayıf (en az 6 karakter).',
     'auth/user-not-found': 'Bu e-posta ile kayıtlı kullanıcı yok.',
     'auth/wrong-password': 'Şifre hatalı.',
-    'auth/invalid-credential': 'E-posta veya şifre hatalı.',
+    'auth/invalid-credential':
+      'Giriş başarısız: hesap yok, şifre yanlış veya bu e-posta yalnızca Google ile kayıtlı olabilir.',
     'auth/too-many-requests': 'Çok fazla deneme. Lütfen sonra tekrar deneyin.',
     'auth/operation-not-allowed': 'Firebase Console’da E-posta/şifre veya Google ile giriş açık olmalı.',
   };

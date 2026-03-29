@@ -4,6 +4,7 @@ import { Leaf, LogIn, UserPlus } from 'lucide-react';
 import { isFirebaseConfigured } from '../lib/firebase';
 import {
   formatFirebaseAuthError,
+  getSignInMethodsForEmail,
   registerWithEmailPassword,
   signInFirebaseWithGoogleIdToken,
   signInWithEmailPasswordLogin,
@@ -15,7 +16,7 @@ import {
   type UserRole,
 } from '../lib/session';
 import { getGoogleWebClientId } from '../lib/googleWebClientId';
-import { loadGoogleIdentityScript, renderGoogleSignInAndSignUpButtons } from '../lib/googleIdentity';
+import { loadGoogleIdentityScript, renderGoogleContinueButton } from '../lib/googleIdentity';
 import { postGoogleCredential } from '../lib/authApi';
 
 type AuthMode = 'login' | 'register';
@@ -37,10 +38,12 @@ export function Login() {
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [googleBtnLoading, setGoogleBtnLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const googleSignInRef = useRef<HTMLDivElement | null>(null);
-  const googleSignUpRef = useRef<HTMLDivElement | null>(null);
+  const googleBtnRef = useRef<HTMLDivElement | null>(null);
 
   const isEngineer = loginRole === 'muhendis';
+
+  const authModeRef = useRef(authMode);
+  authModeRef.current = authMode;
 
   const finishSessionAndNavigate = async (opts: {
     uid: string;
@@ -81,6 +84,25 @@ export function Login() {
       const em = result.user.email ?? '';
 
       if (isFirebaseConfigured()) {
+        if (authModeRef.current === 'login' && em.trim()) {
+          try {
+            const methods = await getSignInMethodsForEmail(em);
+            if (methods.length === 0) {
+              setGoogleError(
+                'Bu Google hesabı Firebase’de yok. Önce «Kayıt ol» sekmesinden üye olun.',
+              );
+              return;
+            }
+            if (!methods.includes('google.com')) {
+              setGoogleError(
+                'Bu e-posta Google ile değil, şifre ile kayıtlı. E-posta ile giriş kullanın.',
+              );
+              return;
+            }
+          } catch {
+            /* devam — enumeration koruması vb. */
+          }
+        }
         const fbUser = await signInFirebaseWithGoogleIdToken(credential);
         if (!fbUser) {
           setGoogleError('Firebase Google oturumu açılamadı (Authentication → Google açık olmalı).');
@@ -131,43 +153,64 @@ export function Login() {
       }
     }
 
-    if (isFirebaseConfigured()) {
-      try {
-        if (authMode === 'register') {
-          const user = await registerWithEmailPassword(email, password, defaultDisplayName);
-          const em = user.email || email;
-          const name = user.displayName || defaultDisplayName;
-          await finishSessionAndNavigate({
-            uid: user.uid,
-            email: em,
-            displayName: name,
-            role: loginRole,
-          });
-        } else {
-          const user = await signInWithEmailPasswordLogin(email, password);
-          const em = user.email || email;
-          const name = user.displayName || em.split('@')[0] || 'Kullanıcı';
-          await finishSessionAndNavigate({
-            uid: user.uid,
-            email: em,
-            displayName: name,
-            role: loginRole,
-          });
-        }
-      } catch (err) {
-        setLoginError(formatFirebaseAuthError(err));
-      }
+    if (!isFirebaseConfigured()) {
+      setLoginError('Güvenli giriş ve kayıt için Firebase yapılandırması gerekli (VITE_FIREBASE_*).');
       return;
     }
 
-    setStoredRole(loginRole);
-    setStoredUserProfile({
-      uid: `offline-${crypto.randomUUID()}`,
-      email,
-      displayName: defaultDisplayName,
-      role: loginRole,
-    });
-    navigate('/panel');
+    try {
+      if (authMode === 'register') {
+        try {
+          const existing = await getSignInMethodsForEmail(email);
+          if (existing.length > 0) {
+            setLoginError(
+              'Bu e-posta zaten Firebase’de kayıtlı. «Giriş» sekmesini veya Google ile girişi kullanın.',
+            );
+            return;
+          }
+        } catch {
+          /* enumerate koruması vb. — devam, createUser hata verir */
+        }
+        const user = await registerWithEmailPassword(email, password, defaultDisplayName);
+        const em = user.email || email;
+        const name = user.displayName || defaultDisplayName;
+        await finishSessionAndNavigate({
+          uid: user.uid,
+          email: em,
+          displayName: name,
+          role: loginRole,
+        });
+      } else {
+        try {
+          const methods = await getSignInMethodsForEmail(email);
+          if (methods.length === 0) {
+            setLoginError(
+              'Bu e-posta Firebase’de kayıtlı değil. Önce «Kayıt ol» sekmesinden hesap oluşturun.',
+            );
+            return;
+          }
+          if (!methods.includes('password')) {
+            setLoginError(
+              'Bu hesap e-posta şifresi ile kayıtlı değil (yalnızca Google vb.). Google ile giriş yapın.',
+            );
+            return;
+          }
+        } catch {
+          /* ön kontrol başarısızsa doğrudan sign-in dene */
+        }
+        const user = await signInWithEmailPasswordLogin(email, password);
+        const em = user.email || email;
+        const name = user.displayName || em.split('@')[0] || 'Kullanıcı';
+        await finishSessionAndNavigate({
+          uid: user.uid,
+          email: em,
+          displayName: name,
+          role: loginRole,
+        });
+      }
+    } catch (err) {
+      setLoginError(formatFirebaseAuthError(err));
+    }
   };
 
   const fillDemoCredentials = () => {
@@ -189,19 +232,18 @@ export function Login() {
       setGoogleBtnLoading(true);
       setGoogleError(null);
       try {
-        for (let i = 0; i < 12 && (!googleSignInRef.current || !googleSignUpRef.current); i++) {
+        for (let i = 0; i < 12 && !googleBtnRef.current; i++) {
           await new Promise<void>((r) => requestAnimationFrame(() => r()));
         }
         if (cancelled) return;
-        if (!googleSignInRef.current || !googleSignUpRef.current) {
+        if (!googleBtnRef.current) {
           setGoogleError('google_button_mount_failed');
           return;
         }
         await loadGoogleIdentityScript();
-        if (cancelled || !googleSignInRef.current || !googleSignUpRef.current) return;
-        renderGoogleSignInAndSignUpButtons({
-          signInContainer: googleSignInRef.current,
-          signUpContainer: googleSignUpRef.current,
+        if (cancelled || !googleBtnRef.current) return;
+        renderGoogleContinueButton({
+          container: googleBtnRef.current,
           clientId: googleClientId,
           onCredential: (cred) => {
             void handleGoogleCredentialRef.current(cred);
@@ -216,8 +258,7 @@ export function Login() {
     void run();
     return () => {
       cancelled = true;
-      googleSignInRef.current?.replaceChildren();
-      googleSignUpRef.current?.replaceChildren();
+      googleBtnRef.current?.replaceChildren();
     };
   }, [googleClientId, loginRole]);
 
@@ -281,15 +322,17 @@ export function Login() {
           </div>
 
           <div className="space-y-3 mb-6">
-            <p className="text-xs text-center text-gray-500 font-medium">Google</p>
+            <p className="text-xs text-center text-gray-500 font-medium">
+              Google ile giriş veya ilk kez kayıt
+            </p>
             <div
-              className={`space-y-3 ${googleBusy ? 'opacity-70 pointer-events-none' : ''}`}
-            >
-              <div ref={googleSignInRef} className="min-h-[44px] w-full flex justify-center items-center" />
-              <div ref={googleSignUpRef} className="min-h-[44px] w-full flex justify-center items-center" />
-            </div>
+              className={`min-h-[44px] w-full flex justify-center items-center ${
+                googleBusy ? 'opacity-70 pointer-events-none' : ''
+              }`}
+              ref={googleBtnRef}
+            />
             {googleBtnLoading && (
-              <p className="text-xs text-center text-gray-500">Google butonları yükleniyor…</p>
+              <p className="text-xs text-center text-gray-500">Google yükleniyor…</p>
             )}
             {googleError && (
               <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -421,40 +464,6 @@ export function Login() {
               </button>
             </div>
           )}
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              {authMode === 'login' ? (
-                <>
-                  Hesabınız yok mu?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode('register');
-                      setLoginError(null);
-                    }}
-                    className="text-green-600 hover:text-green-700 font-medium"
-                  >
-                    Kayıt olun
-                  </button>
-                </>
-              ) : (
-                <>
-                  Zaten hesabınız var mı?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode('login');
-                      setLoginError(null);
-                    }}
-                    className="text-green-600 hover:text-green-700 font-medium"
-                  >
-                    Giriş yapın
-                  </button>
-                </>
-              )}
-            </p>
-          </div>
         </div>
 
         <div className="text-center mt-6">
