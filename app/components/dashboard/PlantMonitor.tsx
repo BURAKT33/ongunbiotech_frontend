@@ -12,7 +12,6 @@ import {
   setMonitorCustomLabel,
   type LastAnalysisSummary,
 } from '../../lib/persistAnalyzerReport';
-import { getStoredUserProfile, shouldHidePlantDemo } from '../../lib/session';
 import { ReportSignalCharts } from './ReportSignalCharts';
 import {
   BarChart,
@@ -27,11 +26,6 @@ import {
 } from 'recharts';
 
 type PlantStatus = 'healthy' | 'warning' | 'critical';
-type PlantTrend = {
-  text: string;
-  tone: 'up' | 'down' | 'flat';
-  suffix: string;
-};
 type PlantSeriesPoint = {
   time: string;
   elektrik: number;
@@ -47,136 +41,6 @@ type PlantHistoryRow = {
   rowKey: string;
   fromReport?: boolean;
 };
-type PlantProfile = {
-  id: string;
-  name: string;
-  status: PlantStatus;
-  elektrikMv: number;
-  elektrikTrend: PlantTrend;
-  sicaklikC: number;
-  sicaklikNote: string;
-  havaNemiPct: number;
-  havaNemiNote: string;
-  sonSulamaSaat: number;
-  sulamaNote: string;
-  realtimeData: PlantSeriesPoint[];
-  history: PlantHistoryRow[];
-};
-
-const plantProfiles: PlantProfile[] = [
-  {
-    id: 'domates-1',
-    name: 'Domates - Sera A, Sıra 1',
-    status: 'healthy',
-    elektrikMv: 85,
-    elektrikTrend: { text: '↑ 12%', tone: 'up', suffix: 'son 24 saatte' },
-    sicaklikC: 25,
-    sicaklikNote: 'Stabil',
-    havaNemiPct: 62,
-    havaNemiNote: 'Normal aralık',
-    sonSulamaSaat: 18,
-    sulamaNote: '6 saat sonra önerilir',
-    realtimeData: [
-      { time: '00:00', elektrik: 62, nem: 45 },
-      { time: '04:00', elektrik: 58, nem: 48 },
-      { time: '08:00', elektrik: 72, nem: 42 },
-      { time: '12:00', elektrik: 85, nem: 38 },
-      { time: '16:00', elektrik: 78, nem: 41 },
-      { time: '20:00', elektrik: 70, nem: 44 },
-      { time: 'Şimdi', elektrik: 85, nem: 38 },
-    ],
-    history: [
-      { timeLabel: 'Bugün, 14:30', elektrik: 85, nem: 38, sicaklik: 25, statusText: 'Optimal', statusTone: 'ok', rowKey: 'd1-1' },
-      { timeLabel: 'Bugün, 12:30', elektrik: 82, nem: 41, sicaklik: 26, statusText: 'İyi', statusTone: 'ok', rowKey: 'd1-2' },
-      { timeLabel: 'Bugün, 10:30', elektrik: 78, nem: 44, sicaklik: 24, statusText: 'İyi', statusTone: 'ok', rowKey: 'd1-3' },
-      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 48, sicaklik: 22, statusText: 'Orta', statusTone: 'mid', rowKey: 'd1-4' },
-    ],
-  },
-  {
-    id: 'biber-1',
-    name: 'Biber - Sera A, Sıra 2',
-    status: 'warning',
-    elektrikMv: 73,
-    elektrikTrend: { text: '↓ 6%', tone: 'down', suffix: 'son 24 saatte' },
-    sicaklikC: 27,
-    sicaklikNote: 'Hafif yüksek',
-    havaNemiPct: 54,
-    havaNemiNote: 'Alt banda yakın',
-    sonSulamaSaat: 22,
-    sulamaNote: '2 saat içinde sulama önerilir',
-    realtimeData: [
-      { time: '00:00', elektrik: 68, nem: 55 },
-      { time: '04:00', elektrik: 64, nem: 57 },
-      { time: '08:00', elektrik: 72, nem: 53 },
-      { time: '12:00', elektrik: 76, nem: 50 },
-      { time: '16:00', elektrik: 71, nem: 52 },
-      { time: '20:00', elektrik: 69, nem: 54 },
-      { time: 'Şimdi', elektrik: 73, nem: 54 },
-    ],
-    history: [
-      { timeLabel: 'Bugün, 14:30', elektrik: 73, nem: 54, sicaklik: 27, statusText: 'Dikkat', statusTone: 'mid', rowKey: 'b1-1' },
-      { timeLabel: 'Bugün, 12:30', elektrik: 76, nem: 50, sicaklik: 28, statusText: 'Dikkat', statusTone: 'mid', rowKey: 'b1-2' },
-      { timeLabel: 'Bugün, 10:30', elektrik: 74, nem: 52, sicaklik: 27, statusText: 'Orta', statusTone: 'mid', rowKey: 'b1-3' },
-      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 53, sicaklik: 26, statusText: 'İyi', statusTone: 'ok', rowKey: 'b1-4' },
-    ],
-  },
-  {
-    id: 'domates-2',
-    name: 'Domates - Sera B, Sıra 1',
-    status: 'critical',
-    elektrikMv: 61,
-    elektrikTrend: { text: '↓ 14%', tone: 'down', suffix: 'son 24 saatte' },
-    sicaklikC: 30,
-    sicaklikNote: 'Yüksek',
-    havaNemiPct: 46,
-    havaNemiNote: 'Düşük',
-    sonSulamaSaat: 29,
-    sulamaNote: 'Acil sulama önerilir',
-    realtimeData: [
-      { time: '00:00', elektrik: 69, nem: 49 },
-      { time: '04:00', elektrik: 66, nem: 47 },
-      { time: '08:00', elektrik: 64, nem: 46 },
-      { time: '12:00', elektrik: 62, nem: 45 },
-      { time: '16:00', elektrik: 60, nem: 44 },
-      { time: '20:00', elektrik: 58, nem: 45 },
-      { time: 'Şimdi', elektrik: 61, nem: 46 },
-    ],
-    history: [
-      { timeLabel: 'Bugün, 14:30', elektrik: 61, nem: 46, sicaklik: 30, statusText: 'Kritik', statusTone: 'warn', rowKey: 'd2-1' },
-      { timeLabel: 'Bugün, 12:30', elektrik: 62, nem: 45, sicaklik: 31, statusText: 'Kritik', statusTone: 'warn', rowKey: 'd2-2' },
-      { timeLabel: 'Bugün, 10:30', elektrik: 64, nem: 46, sicaklik: 30, statusText: 'Dikkat', statusTone: 'mid', rowKey: 'd2-3' },
-      { timeLabel: 'Bugün, 08:30', elektrik: 66, nem: 47, sicaklik: 29, statusText: 'Dikkat', statusTone: 'mid', rowKey: 'd2-4' },
-    ],
-  },
-  {
-    id: 'salatalik-1',
-    name: 'Salatalık - Sera B, Sıra 3',
-    status: 'healthy',
-    elektrikMv: 79,
-    elektrikTrend: { text: '↑ 5%', tone: 'up', suffix: 'son 24 saatte' },
-    sicaklikC: 23,
-    sicaklikNote: 'Uygun aralık',
-    havaNemiPct: 68,
-    havaNemiNote: 'Yüksek ama stabil',
-    sonSulamaSaat: 12,
-    sulamaNote: '8 saat sonra önerilir',
-    realtimeData: [
-      { time: '00:00', elektrik: 65, nem: 66 },
-      { time: '04:00', elektrik: 67, nem: 67 },
-      { time: '08:00', elektrik: 72, nem: 69 },
-      { time: '12:00', elektrik: 77, nem: 68 },
-      { time: '16:00', elektrik: 75, nem: 67 },
-      { time: '20:00', elektrik: 76, nem: 68 },
-      { time: 'Şimdi', elektrik: 79, nem: 68 },
-    ],
-    history: [
-      { timeLabel: 'Bugün, 14:30', elektrik: 79, nem: 68, sicaklik: 23, statusText: 'İyi', statusTone: 'ok', rowKey: 's1-1' },
-      { timeLabel: 'Bugün, 12:30', elektrik: 77, nem: 68, sicaklik: 24, statusText: 'İyi', statusTone: 'ok', rowKey: 's1-2' },
-      { timeLabel: 'Bugün, 10:30', elektrik: 74, nem: 69, sicaklik: 23, statusText: 'Optimal', statusTone: 'ok', rowKey: 's1-3' },
-      { timeLabel: 'Bugün, 08:30', elektrik: 72, nem: 70, sicaklik: 22, statusText: 'Optimal', statusTone: 'ok', rowKey: 's1-4' },
-    ],
-  },
-];
 
 function reportToHistoryRow(r: ReportItem, labels: Record<string, string>): PlantHistoryRow {
   const tone: PlantHistoryRow['statusTone'] =
@@ -215,16 +79,12 @@ function chartToSeries(chart: SignalChartPayload | null | undefined, maxPoints =
 }
 
 function initialMonitorSelectedKey(): string {
-  const uid = getStoredUserProfile()?.uid;
-  if (shouldHidePlantDemo(uid)) {
-    const reports = readApiReportsNewestFirst();
-    return reports.length > 0 ? `report:${reports[0].id}` : '';
-  }
-  return 'demo:domates-1';
+  const reports = readApiReportsNewestFirst();
+  return reports.length > 0 ? `report:${reports[0].id}` : '';
 }
 
 export function PlantMonitor() {
-  /** demo:domates-1 | report:<ReportItem.id> | '' (yeni hesap, demo kapalı) */
+  /** report:<ReportItem.id> | '' */
   const [selectedKey, setSelectedKey] = useState<string>(initialMonitorSelectedKey);
   const [lastSummary, setLastSummary] = useState<LastAnalysisSummary | null>(null);
   const [apiChart, setApiChart] = useState<SignalChartPayload | null>(null);
@@ -234,23 +94,21 @@ export function PlantMonitor() {
 
   useEffect(() => {
     const sync = () => {
-      const uid = getStoredUserProfile()?.uid;
-      const hideDemo = shouldHidePlantDemo(uid);
       const reports = readApiReportsNewestFirst();
       setApiReports(reports);
       setLastSummary(readLastAnalysisSummary());
       setMonitorLabels(readMonitorCustomLabels());
       setSelectedKey((prev) => {
-        if (hideDemo && prev.startsWith('demo:')) {
+        if (prev.startsWith('demo:')) {
           return reports.length > 0 ? `report:${reports[0].id}` : '';
         }
         if (prev.startsWith('report:')) {
           const id = prev.slice(7);
           if (reports.some((r) => r.id === id)) return prev;
           if (reports.length > 0) return `report:${reports[0].id}`;
-          return hideDemo ? '' : 'demo:domates-1';
+          return '';
         }
-        if (hideDemo && prev === '' && reports.length > 0) {
+        if (prev === '' && reports.length > 0) {
           return `report:${reports[0].id}`;
         }
         return prev;
@@ -285,21 +143,10 @@ export function PlantMonitor() {
     }
   }, [activeReport, monitorLabels]);
 
-  const hideDemo = shouldHidePlantDemo(getStoredUserProfile()?.uid);
-  const demoId = !hideDemo && selectedKey.startsWith('demo:') ? selectedKey.slice(5) : null;
-  const selectedPlantData =
-    demoId != null
-      ? plantProfiles.find((p) => p.id === demoId) ?? plantProfiles[0]
-      : !hideDemo && !activeReport
-        ? plantProfiles[0]
-        : null;
-  const emptyMonitorUi = hideDemo && !activeReport;
+  const emptyMonitorUi = !activeReport;
 
   const reportHistoryRows = apiReports.map((r) => reportToHistoryRow(r, monitorLabels));
-  const mergedHistory: PlantHistoryRow[] = [
-    ...reportHistoryRows,
-    ...(demoId && selectedPlantData ? selectedPlantData.history : []),
-  ];
+  const mergedHistory: PlantHistoryRow[] = [...reportHistoryRows];
 
   const displayMetrics = activeReport
     ? {
@@ -325,35 +172,20 @@ export function PlantMonitor() {
         realtimeData:
           chartToSeries(activeReport.signalChart).length > 0
             ? chartToSeries(activeReport.signalChart)
-            : hideDemo
-              ? []
-              : plantProfiles[0].realtimeData,
+            : [],
       }
-    : selectedPlantData
-      ? {
-          status: selectedPlantData.status,
-          elektrikMv: selectedPlantData.elektrikMv,
-          elektrikTrend: selectedPlantData.elektrikTrend,
-          sicaklikC: selectedPlantData.sicaklikC,
-          sicaklikNote: selectedPlantData.sicaklikNote,
-          havaNemiPct: selectedPlantData.havaNemiPct,
-          havaNemiNote: selectedPlantData.havaNemiNote,
-          sonSulamaSaat: selectedPlantData.sonSulamaSaat,
-          sulamaNote: selectedPlantData.sulamaNote,
-          realtimeData: selectedPlantData.realtimeData,
-        }
-      : {
-          status: 'healthy' as PlantStatus,
-          elektrikMv: 0,
-          elektrikTrend: { text: '—', tone: 'flat' as const, suffix: '' },
-          sicaklikC: 0,
-          sicaklikNote: '—',
-          havaNemiPct: 0,
-          havaNemiNote: '—',
-          sonSulamaSaat: 0,
-          sulamaNote: '—',
-          realtimeData: [] as PlantSeriesPoint[],
-        };
+    : {
+        status: 'healthy' as PlantStatus,
+        elektrikMv: 0,
+        elektrikTrend: { text: '—', tone: 'flat' as const, suffix: '' },
+        sicaklikC: 0,
+        sicaklikNote: '—',
+        havaNemiPct: 0,
+        havaNemiNote: '—',
+        sonSulamaSaat: 0,
+        sulamaNote: '—',
+        realtimeData: [] as PlantSeriesPoint[],
+      };
 
   const getStatusColor = (status: PlantStatus) => {
     switch (status) {
@@ -373,12 +205,7 @@ export function PlantMonitor() {
     }
   };
 
-  const trendClass =
-    displayMetrics.elektrikTrend.tone === 'up'
-      ? 'text-green-600'
-      : displayMetrics.elektrikTrend.tone === 'down'
-        ? 'text-red-600'
-        : 'text-gray-600';
+  const trendClass = 'text-gray-600';
 
   const rowStatusClass = (tone: PlantHistoryRow['statusTone']): string => {
     if (tone === 'warn') return 'bg-red-100 text-red-800';
@@ -422,7 +249,7 @@ export function PlantMonitor() {
 
       {/* Plant / oturum seçici */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-5">
-        {hideDemo && apiReports.length === 0 && (
+        {apiReports.length === 0 && (
           <p className="text-sm text-gray-600">
             Henüz Analyzer raporu yok. Veri senkron veya Raporlar üzerinden oturum eklediğinizde burada seçebilirsiniz.
           </p>
@@ -494,36 +321,6 @@ export function PlantMonitor() {
             )}
           </div>
         )}
-
-        {!hideDemo && (
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Örnek seralar (demo)</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {plantProfiles.map((plant) => {
-                const key = `demo:${plant.id}`;
-                const sel = selectedKey === key;
-                return (
-                  <button
-                    key={plant.id}
-                    type="button"
-                    onClick={() => setSelectedKey(key)}
-                    className={`p-3 rounded-lg border-2 text-left transition-all ${
-                      sel ? 'border-green-600 bg-green-50' : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <Activity className={`w-5 h-5 ${sel ? 'text-green-600' : 'text-gray-400'}`} />
-                      <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(plant.status)}`}>
-                        {getStatusText(plant.status)}
-                      </span>
-                    </div>
-                    <p className="text-sm font-medium text-gray-900">{plant.name}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Real-time Metrics */}
@@ -538,11 +335,7 @@ export function PlantMonitor() {
                 {activeReport ? 'Sağlık skoru (panel)' : 'Elektriksel Sinyal'}
               </p>
               <p className="text-xl font-bold text-gray-900">
-                {emptyMonitorUi
-                  ? '—'
-                  : activeReport
-                    ? `${displayMetrics.elektrikMv}`
-                    : `${displayMetrics.elektrikMv} mV`}
+                {activeReport ? `${displayMetrics.elektrikMv}` : '—'}
               </p>
             </div>
           </div>
@@ -665,25 +458,12 @@ export function PlantMonitor() {
                 chart={apiChart}
                 title="Analyzer — signal_chart (yaprak elektrofizyolojisi)"
               />
-              {!hideDemo && (
-                <p className="text-xs text-gray-500 mt-6 mb-2">
-                  Aşağıdaki çizgi grafiği panel içi örnek zaman serisidir; seçili bitkiye ait demo veridir.
-                </p>
-              )}
             </>
           ) : (
             <p className="text-sm text-gray-500 mb-4">
-              {hideDemo ? (
-                <>
-                  Analyzer çıktısı aldığınızda üstte gerçek{' '}
-                  <span className="font-medium text-gray-700">signal_chart</span> gösterilir.
-                </>
-              ) : (
-                <>
-                  Seçilen bitki için örnek elektriksel sinyal eğrisi. Analyzer çıktısı aldığınızda üstte gerçek{' '}
-                  <span className="font-medium text-gray-700">signal_chart</span> gösterilir.
-                </>
-              )}
+              Analyzer çıktısı aldığınızda üstte gerçek{' '}
+              <span className="font-medium text-gray-700">signal_chart</span> gösterilir. Çizgi grafiği, seçili
+              oturumdaki zaman serisi ile dolar.
             </p>
           )}
           {displayMetrics.realtimeData.length > 0 ? (
@@ -716,7 +496,7 @@ export function PlantMonitor() {
             </ResponsiveContainer>
           ) : (
             <p className="text-sm text-gray-500 py-12 text-center">
-              Çizgi grafiği için seçili oturumda zaman serisi veya örnek veri gerekir.
+              Çizgi grafiği için seçili oturumda zaman serisi (signal_chart veya skor serisi) gerekir.
             </p>
           )}
         </div>
@@ -726,9 +506,7 @@ export function PlantMonitor() {
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-1">Son Ölçümler</h3>
         <p className="text-xs text-gray-500 mb-4">
-          {hideDemo
-            ? 'Analyzer oturumları, yeniden eskiye sıralı.'
-            : 'Üstte Analyzer ile gelen oturumlar (yeniden eskiye); altta seçili demo seraya ait örnek satırlar.'}
+          Analyzer oturumları, yeniden eskiye sıralı.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full">

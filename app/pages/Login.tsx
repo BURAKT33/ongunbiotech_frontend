@@ -3,19 +3,14 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { Leaf, LogIn, UserPlus } from 'lucide-react';
 import { isFirebaseConfigured } from '../lib/firebase';
 import {
+  firebaseSignOut,
   formatFirebaseAuthError,
-  isLikelyNewFirebaseAccount,
   registerWithEmailPassword,
   signInFirebaseWithGoogleIdToken,
   signInWithEmailPasswordLogin,
 } from '../lib/firebaseAuth';
-import { upsertFirestoreUser } from '../lib/firestoreUsers';
-import {
-  markAccountWithoutPlantDemo,
-  setStoredRole,
-  setStoredUserProfile,
-  type UserRole,
-} from '../lib/session';
+import { resolveSessionRoleForLogin, upsertFirestoreUser } from '../lib/firestoreUsers';
+import { setStoredRole, setStoredUserProfile, type UserRole } from '../lib/session';
 import { getGoogleWebClientId } from '../lib/googleWebClientId';
 import { loadGoogleIdentityScript, renderGoogleContinueButton } from '../lib/googleIdentity';
 import { postGoogleCredential } from '../lib/authApi';
@@ -88,14 +83,17 @@ export function Login() {
           setGoogleError('Firebase Google oturumu açılamadı (Authentication → Google açık olmalı).');
           return;
         }
-        if (isLikelyNewFirebaseAccount(fbUser)) {
-          markAccountWithoutPlantDemo(fbUser.uid);
+        const roleResolved = await resolveSessionRoleForLogin(fbUser.uid, loginRole);
+        if (!roleResolved.ok) {
+          await firebaseSignOut();
+          setGoogleError(roleResolved.message);
+          return;
         }
         await finishSessionAndNavigate({
           uid: fbUser.uid,
           email: em || fbUser.email || '',
           displayName: name,
-          role,
+          role: roleResolved.role,
         });
       } else {
         setStoredRole(role);
@@ -144,24 +142,35 @@ export function Login() {
     try {
       if (authMode === 'register') {
         const user = await registerWithEmailPassword(email, password, defaultDisplayName);
-        markAccountWithoutPlantDemo(user.uid);
         const em = user.email || email;
         const name = user.displayName || defaultDisplayName;
+        const roleResolved = await resolveSessionRoleForLogin(user.uid, loginRole);
+        if (!roleResolved.ok) {
+          await firebaseSignOut();
+          setLoginError(roleResolved.message);
+          return;
+        }
         await finishSessionAndNavigate({
           uid: user.uid,
           email: em,
           displayName: name,
-          role: loginRole,
+          role: roleResolved.role,
         });
       } else {
         const user = await signInWithEmailPasswordLogin(email, password);
         const em = user.email || email;
         const name = user.displayName || em.split('@')[0] || 'Kullanıcı';
+        const roleResolved = await resolveSessionRoleForLogin(user.uid, loginRole);
+        if (!roleResolved.ok) {
+          await firebaseSignOut();
+          setLoginError(roleResolved.message);
+          return;
+        }
         await finishSessionAndNavigate({
           uid: user.uid,
           email: em,
           displayName: name,
-          role: loginRole,
+          role: roleResolved.role,
         });
       }
     } catch (err) {

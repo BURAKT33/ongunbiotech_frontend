@@ -48,14 +48,6 @@ export async function signInFirebaseWithGoogleIdToken(idToken: string): Promise<
   }
 }
 
-/** İlk oturum açma ile hesap oluşturma zamanı yakınsa yeni hesap sayılır (Google ilk giriş). */
-export function isLikelyNewFirebaseAccount(user: User): boolean {
-  const c = user.metadata.creationTime;
-  const l = user.metadata.lastSignInTime;
-  if (!c || !l) return false;
-  return Math.abs(new Date(l).getTime() - new Date(c).getTime()) < 120_000;
-}
-
 export async function registerWithEmailPassword(
   email: string,
   password: string,

@@ -24,36 +24,6 @@ import { ReportSignalCharts } from './ReportSignalCharts';
 
 export type { ReportItem, ReportStatus } from '../../lib/reportTypes';
 
-const sampleReports: ReportItem[] = [
-  {
-    id: 'sample-1',
-    title: 'Haftalık Sulama Verimlilik Raporu',
-    date: '2026-03-20',
-    plant: 'Domates - Sera A',
-    score: 92,
-    source: 'sample',
-    status: 'Tamamlandı',
-  },
-  {
-    id: 'sample-2',
-    title: 'Elektriksel Sinyal Trend Analizi',
-    date: '2026-03-18',
-    plant: 'Biber - Sera B',
-    score: 84,
-    source: 'sample',
-    status: 'İnceleniyor',
-  },
-  {
-    id: 'sample-3',
-    title: 'Toprak Nem Dalgalanma Raporu',
-    date: '2026-03-17',
-    plant: 'Salatalık - Sera C',
-    score: 68,
-    source: 'sample',
-    status: 'Uyarı',
-  },
-];
-
 /** Sinyaller ekranıyla aynı bağlı çiftçiler — sera bazlı örnek raporlar */
 const engineerLinkedFarmerReports: ReportItem[] = [
   {
@@ -251,7 +221,7 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
         }, []);
       } else {
         const nonApi = cachedItems.filter((r) => r.source !== 'api');
-        merged = [...sampleReports, ...apiMerged, ...nonApi].reduce<ReportItem[]>((acc, item) => {
+        merged = [...apiMerged, ...nonApi].reduce<ReportItem[]>((acc, item) => {
           if (!acc.some((report) => report.id === item.id)) acc.push(item);
           return acc;
         }, []);
@@ -389,7 +359,7 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
             <p className="text-gray-600 mt-1">
             {mode === 'muhendis'
               ? 'Bağlı çiftçilerin sera raporları, kendi ölçümleriniz; analyzer raporları Firebase’de dosya olarak da saklanabilir'
-              : 'Örnek raporlar ve analyzer çıktıları; Firebase yapılandırıldıysa .md rapor dosyası bulutta da tutulur'}
+              : 'Plant Analyzer çıktılarınız; Firebase yapılandırıldıysa .md rapor dosyası bulutta da tutulur'}
           </p>
         </div>
         <button

@@ -1,35 +1,5 @@
 export const ROLE_STORAGE_KEY = 'plantsignal-role';
 export const USER_PROFILE_STORAGE_KEY = 'plantsignal-user-profile';
-/** UIDs that registered (or first Google sign-in) after demo kapatma — Bitki İzleme örnek seraları gösterilmez. */
-const NO_PLANT_DEMO_UIDS_KEY = 'plantsignal-no-plant-demo-uids';
-
-function readNoPlantDemoUidSet(): Set<string> {
-  try {
-    const raw = localStorage.getItem(NO_PLANT_DEMO_UIDS_KEY);
-    const list = raw ? (JSON.parse(raw) as unknown) : [];
-    if (!Array.isArray(list)) return new Set();
-    return new Set(list.filter((x): x is string => typeof x === 'string' && x.length > 0));
-  } catch {
-    return new Set();
-  }
-}
-
-export function markAccountWithoutPlantDemo(uid: string) {
-  if (!uid) return;
-  try {
-    const set = readNoPlantDemoUidSet();
-    if (set.has(uid)) return;
-    set.add(uid);
-    localStorage.setItem(NO_PLANT_DEMO_UIDS_KEY, JSON.stringify([...set]));
-  } catch {
-    /* ignore */
-  }
-}
-
-export function shouldHidePlantDemo(uid: string | null | undefined): boolean {
-  if (!uid) return false;
-  return readNoPlantDemoUidSet().has(uid);
-}
 
 export type UserRole = 'ciftci' | 'muhendis';
 
