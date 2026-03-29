@@ -4,12 +4,14 @@ import { Leaf, LogIn, UserPlus } from 'lucide-react';
 import { isFirebaseConfigured } from '../lib/firebase';
 import {
   formatFirebaseAuthError,
+  isLikelyNewFirebaseAccount,
   registerWithEmailPassword,
   signInFirebaseWithGoogleIdToken,
   signInWithEmailPasswordLogin,
 } from '../lib/firebaseAuth';
 import { upsertFirestoreUser } from '../lib/firestoreUsers';
 import {
+  markAccountWithoutPlantDemo,
   setStoredRole,
   setStoredUserProfile,
   type UserRole,
@@ -86,6 +88,9 @@ export function Login() {
           setGoogleError('Firebase Google oturumu açılamadı (Authentication → Google açık olmalı).');
           return;
         }
+        if (isLikelyNewFirebaseAccount(fbUser)) {
+          markAccountWithoutPlantDemo(fbUser.uid);
+        }
         await finishSessionAndNavigate({
           uid: fbUser.uid,
           email: em || fbUser.email || '',
@@ -139,6 +144,7 @@ export function Login() {
     try {
       if (authMode === 'register') {
         const user = await registerWithEmailPassword(email, password, defaultDisplayName);
+        markAccountWithoutPlantDemo(user.uid);
         const em = user.email || email;
         const name = user.displayName || defaultDisplayName;
         await finishSessionAndNavigate({

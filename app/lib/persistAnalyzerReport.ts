@@ -5,10 +5,93 @@ import { normalizePlantAnalyzerResponse } from './normalizeAnalyzerResponse';
 import type { ReportItem, ReportStatus } from './reportTypes';
 import { getStoredUserProfile } from './session';
 
+/** Eski tek-bucket anahtar (ilk uyumlu oturumda mevcut kullanıcıya taşınır ve silinir). */
 export const REPORTS_STORAGE_KEY = 'plantsignal-reports';
+
+export function reportsLocalStorageKeyForUid(uid: string): string {
+  return `${REPORTS_STORAGE_KEY}:${uid}`;
+}
+
 export const LAST_ANALYSIS_SUMMARY_KEY = 'plantsignal-last-analysis-summary';
 export const PLANT_MONITOR_LABELS_KEY = 'plantsignal-monitor-labels';
 export const REPORTS_UPDATED_EVENT = 'plantsignal-reports-updated';
+
+/**
+ * Oturumdaki kullanıcıya ait yerel rapor deposu anahtarı.
+ * Firebase açıksa profil uid ile Firebase uid eşleşmeli (yanlışlıkla başka kullanıcı verisi okunmasın).
+ */
+export function getActiveReportStorageUid(): string | null {
+  const profile = getStoredUserProfile();
+  if (!profile?.uid) return null;
+  const fb = getCurrentFirebaseUid();
+  if (fb != null && fb !== profile.uid) return null;
+  return profile.uid;
+}
+
+/** Eski `plantsignal-reports` içeriğini bu kullanıcının bucket'ına taşır (bir kez). */
+export function migrateLegacyReportsIfNeeded(uid: string): void {
+  const bucket = reportsLocalStorageKeyForUid(uid);
+  if (localStorage.getItem(bucket) != null) return;
+  const leg = localStorage.getItem(REPORTS_STORAGE_KEY);
+  if (leg != null) {
+    try {
+      const parsed = JSON.parse(leg) as unknown;
+      if (Array.isArray(parsed)) {
+        const tagged = (parsed as ReportItem[]).map((r) =>
+          r.source === 'api' && !r.ownerUid ? { ...r, ownerUid: uid } : r,
+        );
+        localStorage.setItem(bucket, JSON.stringify(tagged));
+      } else {
+        localStorage.setItem(bucket, leg);
+      }
+    } catch {
+      localStorage.setItem(bucket, leg);
+    }
+    localStorage.removeItem(REPORTS_STORAGE_KEY);
+    return;
+  }
+  try {
+    localStorage.setItem(bucket, JSON.stringify([]));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Oturum kullanıcısının yerel rapor listesi (tüm kaynaklar; Raporlar birleştirmesi için). */
+export function readLocalReportItemsForSession(): ReportItem[] {
+  const uid = getActiveReportStorageUid();
+  if (!uid) return [];
+  migrateLegacyReportsIfNeeded(uid);
+  try {
+    const raw = localStorage.getItem(reportsLocalStorageKeyForUid(uid));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? (parsed as ReportItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Yalnızca bu oturumda kalması gereken yerel API raporlarını yazar (bulutta eşi olanlar hariç). */
+export function replacePersistedLocalApiReportsForSession(items: ReportItem[]): void {
+  const uid = getActiveReportStorageUid();
+  if (!uid) return;
+  migrateLegacyReportsIfNeeded(uid);
+  try {
+    localStorage.setItem(reportsLocalStorageKeyForUid(uid), JSON.stringify(items));
+  } catch {
+    /* ignore */
+  }
+}
+
+function summaryStorageKey(): string {
+  const uid = getActiveReportStorageUid();
+  return uid ? `${LAST_ANALYSIS_SUMMARY_KEY}:${uid}` : LAST_ANALYSIS_SUMMARY_KEY;
+}
+
+function labelsStorageKey(): string {
+  const uid = getActiveReportStorageUid();
+  return uid ? `${PLANT_MONITOR_LABELS_KEY}:${uid}` : PLANT_MONITOR_LABELS_KEY;
+}
 
 export type LastAnalysisSummary = {
   durum: string;
@@ -95,25 +178,30 @@ export function buildReportItemFromAnalyzer(
 }
 
 export function appendReportToLocalStorage(item: ReportItem): void {
+  const uid = getActiveReportStorageUid();
+  if (!uid) return;
+  migrateLegacyReportsIfNeeded(uid);
+  const key = reportsLocalStorageKeyForUid(uid);
+  const owned: ReportItem = { ...item, ownerUid: uid };
   try {
-    const raw = localStorage.getItem(REPORTS_STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     const prev: ReportItem[] = Array.isArray(JSON.parse(raw || '[]')) ? JSON.parse(raw || '[]') : [];
-    const merged = [...prev, item].reduce<ReportItem[]>((acc, r) => {
+    const merged = [...prev, owned].reduce<ReportItem[]>((acc, r) => {
       if (!acc.some((x) => x.id === r.id)) acc.push(r);
       return acc;
     }, []);
-    localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(merged));
+    localStorage.setItem(key, JSON.stringify(merged));
   } catch {
     /* ignore */
   }
-  void syncReportFileToFirestore(item);
+  void syncReportFileToFirestore(owned);
 }
 
 async function syncReportFileToFirestore(item: ReportItem) {
   if (item.source !== 'api' || !item.reportMarkdown?.trim()) return;
   const profile = getStoredUserProfile();
-  const uid = getCurrentFirebaseUid();
-  if (!profile?.uid || profile.uid !== uid) return;
+  const fbUid = getCurrentFirebaseUid();
+  if (!profile?.uid || (fbUid != null && profile.uid !== fbUid)) return;
   try {
     const docId = await saveReportFileToFirestore(item, {
       uid: profile.uid,
@@ -138,7 +226,7 @@ export function saveLastAnalysisSummary(data: PlantAnalyzerResponse, title: stri
       title,
       at: new Date().toISOString(),
     };
-    localStorage.setItem(LAST_ANALYSIS_SUMMARY_KEY, JSON.stringify(summary));
+    localStorage.setItem(summaryStorageKey(), JSON.stringify(summary));
   } catch {
     /* ignore */
   }
@@ -146,7 +234,11 @@ export function saveLastAnalysisSummary(data: PlantAnalyzerResponse, title: stri
 
 export function readLastAnalysisSummary(): LastAnalysisSummary | null {
   try {
-    const raw = localStorage.getItem(LAST_ANALYSIS_SUMMARY_KEY);
+    const scoped = summaryStorageKey();
+    let raw = localStorage.getItem(scoped);
+    if (!raw && scoped !== LAST_ANALYSIS_SUMMARY_KEY) {
+      raw = localStorage.getItem(LAST_ANALYSIS_SUMMARY_KEY);
+    }
     if (!raw) return null;
     return JSON.parse(raw) as LastAnalysisSummary;
   } catch {
@@ -156,12 +248,19 @@ export function readLastAnalysisSummary(): LastAnalysisSummary | null {
 
 /** Yereldeki API raporları, yeniden eskiye (bitki izleme seçici). */
 export function readApiReportsNewestFirst(): ReportItem[] {
+  const uid = getActiveReportStorageUid();
+  if (!uid) return [];
   try {
-    const raw = localStorage.getItem(REPORTS_STORAGE_KEY);
+    migrateLegacyReportsIfNeeded(uid);
+    const raw = localStorage.getItem(reportsLocalStorageKeyForUid(uid));
     const parsed = raw ? JSON.parse(raw) : [];
     const list: ReportItem[] = Array.isArray(parsed) ? parsed : [];
     return list
-      .filter((r) => r.source === 'api')
+      .filter(
+        (r) =>
+          r.source === 'api' &&
+          (!r.ownerUid || r.ownerUid === uid),
+      )
       .sort((a, b) => {
         const ta = Date.parse(a.createdAt || `${a.date}T12:00:00`) || 0;
         const tb = Date.parse(b.createdAt || `${b.date}T12:00:00`) || 0;
@@ -174,7 +273,11 @@ export function readApiReportsNewestFirst(): ReportItem[] {
 
 export function readMonitorCustomLabels(): Record<string, string> {
   try {
-    const raw = localStorage.getItem(PLANT_MONITOR_LABELS_KEY);
+    const key = labelsStorageKey();
+    let raw = localStorage.getItem(key);
+    if (!raw && key !== PLANT_MONITOR_LABELS_KEY) {
+      raw = localStorage.getItem(PLANT_MONITOR_LABELS_KEY);
+    }
     const o = raw ? JSON.parse(raw) : {};
     return o && typeof o === 'object' && !Array.isArray(o) ? (o as Record<string, string>) : {};
   } catch {
@@ -188,7 +291,7 @@ export function setMonitorCustomLabel(reportId: string, label: string): void {
     const t = label.trim();
     if (t) m[reportId] = t;
     else delete m[reportId];
-    localStorage.setItem(PLANT_MONITOR_LABELS_KEY, JSON.stringify(m));
+    localStorage.setItem(labelsStorageKey(), JSON.stringify(m));
   } catch {
     /* ignore */
   }
@@ -214,11 +317,19 @@ export function formatMonitorReportButtonLabel(
 
 /** Bitki izlemede göstermek için en son API raporundaki signal_chart */
 export function readLatestApiSignalChart(): SignalChartPayload | null {
+  const uid = getActiveReportStorageUid();
+  if (!uid) return null;
   try {
-    const raw = localStorage.getItem(REPORTS_STORAGE_KEY);
+    migrateLegacyReportsIfNeeded(uid);
+    const raw = localStorage.getItem(reportsLocalStorageKeyForUid(uid));
     const parsed = raw ? JSON.parse(raw) : [];
     const list: ReportItem[] = Array.isArray(parsed) ? parsed : [];
-    const withChart = list.filter((r) => r.source === 'api' && r.signalChart?.values?.length);
+    const withChart = list.filter(
+      (r) =>
+        r.source === 'api' &&
+        r.signalChart?.values?.length &&
+        (!r.ownerUid || r.ownerUid === uid),
+    );
     if (withChart.length === 0) return null;
     withChart.sort(
       (a, b) =>

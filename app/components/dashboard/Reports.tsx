@@ -12,7 +12,8 @@ import { isFirebaseConfigured } from '../../lib/firebase';
 import { getCurrentFirebaseUid } from '../../lib/firebaseAuth';
 import { fetchReportFilesForSessionUser } from '../../lib/firestoreReports';
 import {
-  REPORTS_STORAGE_KEY,
+  readLocalReportItemsForSession,
+  replacePersistedLocalApiReportsForSession,
   REPORTS_UPDATED_EVENT,
 } from '../../lib/persistAnalyzerReport';
 import { mergeCloudAndLocalApiReports } from '../../lib/reportMerge';
@@ -208,14 +209,7 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
     setLoading(true);
 
     const run = async () => {
-      const cached = localStorage.getItem(REPORTS_STORAGE_KEY);
-      let cachedItems: ReportItem[] = [];
-      try {
-        const parsed = cached ? JSON.parse(cached) : [];
-        cachedItems = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        cachedItems = [];
-      }
+      const cachedItems = readLocalReportItemsForSession();
 
       let cloudApi: ReportItem[] = [];
       const profile = getStoredUserProfile();
@@ -236,8 +230,15 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
         }
       }
 
-      const localApiOnly = cachedItems.filter((r) => r.source === 'api');
-      const apiMerged = mergeCloudAndLocalApiReports(cloudApi, localApiOnly);
+      const storageUid = profile?.uid ?? null;
+      const localApiOnly = cachedItems.filter(
+        (r) =>
+          r.source === 'api' &&
+          (!storageUid || !r.ownerUid || r.ownerUid === storageUid),
+      );
+      const apiMerged = mergeCloudAndLocalApiReports(cloudApi, localApiOnly, {
+        viewerUid: storageUid,
+      });
 
       let merged: ReportItem[];
 
@@ -254,8 +255,10 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
           if (!acc.some((report) => report.id === item.id)) acc.push(item);
           return acc;
         }, []);
-        const persistList = merged.filter((r) => !r.cloudId);
-        localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(persistList));
+        const persistList = apiMerged.filter(
+          (r) => r.source === 'api' && r.storageBackend === 'local',
+        );
+        replacePersistedLocalApiReportsForSession(persistList);
       }
 
       setReports(merged);
