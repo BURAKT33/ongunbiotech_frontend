@@ -4,7 +4,8 @@ import { getCurrentFirebaseUid, refreshAuthTokenForFirestore } from '../../lib/f
 import {
   createFarmerEngineerLink,
   listEngineerLinksForFarmer,
-  listFarmerUidsForEngineer,
+  listFarmerLinksForEngineer,
+  type EngineerFarmerLinkRow,
   type FarmerEngineerLinkRow,
 } from '../../lib/firestoreEngagements';
 import { REPORTS_UPDATED_EVENT } from '../../lib/persistAnalyzerReport';
@@ -25,7 +26,7 @@ export function SharingPanel({ role }: Props) {
   const [linkOk, setLinkOk] = useState(false);
   const [links, setLinks] = useState<FarmerEngineerLinkRow[]>([]);
   const [linkBusy, setLinkBusy] = useState(false);
-  const [farmerUids, setFarmerUids] = useState<string[]>([]);
+  const [farmerLinks, setFarmerLinks] = useState<EngineerFarmerLinkRow[]>([]);
 
   const refreshLinks = useCallback(async () => {
     const p = getStoredUserProfile();
@@ -33,12 +34,12 @@ export function SharingPanel({ role }: Props) {
     if (role === 'ciftci') {
       const rows = await listEngineerLinksForFarmer(p.uid);
       setLinks(rows);
-      setFarmerUids([]);
+      setFarmerLinks([]);
       return;
     }
 
-    const f = await listFarmerUidsForEngineer(p.uid);
-    setFarmerUids(f);
+    const f = await listFarmerLinksForEngineer(p.uid);
+    setFarmerLinks(f);
   }, [role]);
 
   useEffect(() => {
@@ -87,7 +88,10 @@ export function SharingPanel({ role }: Props) {
     setLinkBusy(true);
     try {
       await refreshAuthTokenForFirestore();
-      await createFarmerEngineerLink(engineerUid, p.uid);
+      await createFarmerEngineerLink(engineerUid, p.uid, {
+        farmerDisplayName: p.displayName?.trim() || undefined,
+        farmerEmail: p.email?.trim() || undefined,
+      });
       setLinkOk(true);
       setEngineerUidInput('');
       await refreshLinks();
@@ -121,7 +125,9 @@ export function SharingPanel({ role }: Props) {
           Paylaşım
         </h1>
         <p className="text-gray-600 mt-1">
-          Çiftçiler, raporlarını görmek için bağlı oldukları mühendisin Firebase uid’sini girerek paylaşım kurar.
+          Çiftçi, paylaşmak istediği mühendisin Firebase uid’sini girer; sistem bu uid ile bir çiftçi–mühendis bağlantısı
+          kurar. Mühendis panelinde <strong>Paylaşım → Bağlı çiftçiler</strong> ve <strong>Çiftçi Raporları</strong> bu
+          bağlantıya göre dolar; ilgili çiftçinin tüm Firestore raporları okunabilir olur.
         </p>
       </div>
 
@@ -220,18 +226,26 @@ export function SharingPanel({ role }: Props) {
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">Bağlı çiftçiler</h2>
           <p className="text-sm text-gray-600">
-            Çiftçiler, sizin uid’niz ile bağlantı kurarsa raporlarınız burada görünür.
+            Çiftçi tarafında girilen mühendis uid’si sizin hesabınızla eşleştiyse burada listelenir. Ayrıntılı raporlar
+            için <strong>Çiftçi Raporları</strong> ve sinyaller için <strong>Sinyal Ölçümleri</strong> sekmelerine
+            bakın.
           </p>
-          {farmerUids.length === 0 ? (
+          {farmerLinks.length === 0 ? (
             <p className="text-sm text-gray-500">Henüz bağlı çiftçi yok.</p>
           ) : (
             <ul className="space-y-2">
-              {farmerUids.map((uid) => (
+              {farmerLinks.map((row) => (
                 <li
-                  key={uid}
-                  className="text-sm flex flex-wrap gap-x-3 gap-y-1 items-baseline border border-gray-100 rounded-lg px-3 py-2 bg-gray-50 font-mono"
+                  key={row.farmerUid}
+                  className="text-sm border border-gray-100 rounded-lg px-3 py-2 bg-gray-50 space-y-1"
                 >
-                  {uid}
+                  <p className="font-medium text-gray-900">
+                    {row.farmerLabel || row.farmerEmail || row.farmerUid}
+                  </p>
+                  {row.farmerEmail && row.farmerLabel && (
+                    <p className="text-xs text-gray-600">{row.farmerEmail}</p>
+                  )}
+                  <code className="text-xs text-gray-700 font-mono block">uid: {row.farmerUid}</code>
                 </li>
               ))}
             </ul>

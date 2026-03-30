@@ -14,7 +14,13 @@ import { COL, engagementDocId } from './firestorePaths';
 import type { UserRole } from './session';
 import { normalizePublicIdInput } from './userPublicId';
 
-type LinkMeta = { engineerPublicId?: string; engineerLabel?: string };
+/** Çiftçi bağlantı kurarken kendi adı (mühendis panelinde listeleme için). */
+type LinkMeta = {
+  engineerPublicId?: string;
+  engineerLabel?: string;
+  farmerDisplayName?: string;
+  farmerEmail?: string;
+};
 
 function omitUndefinedFields(obj: Record<string, unknown>): DocumentData {
   const out: Record<string, unknown> = {};
@@ -38,6 +44,8 @@ export async function createFarmerEngineerLink(
       farmerUid,
       engineerPublicId: meta?.engineerPublicId,
       engineerLabel: meta?.engineerLabel,
+      farmerLabel: meta?.farmerDisplayName,
+      farmerEmail: meta?.farmerEmail,
       active: true,
       createdAt: serverTimestamp(),
     }),
@@ -113,7 +121,13 @@ export async function listEngineerLinksForFarmer(farmerUid: string): Promise<Far
     .filter((x): x is FarmerEngineerLinkRow => x != null);
 }
 
-export async function listFarmerUidsForEngineer(engineerUid: string): Promise<string[]> {
+export type EngineerFarmerLinkRow = {
+  farmerUid: string;
+  farmerLabel?: string;
+  farmerEmail?: string;
+};
+
+export async function listFarmerLinksForEngineer(engineerUid: string): Promise<EngineerFarmerLinkRow[]> {
   const db = getFirestoreDb();
   if (!db) return [];
   const q = query(
@@ -123,6 +137,23 @@ export async function listFarmerUidsForEngineer(engineerUid: string): Promise<st
   );
   const snap = await getDocs(q);
   return snap.docs
-    .map((d) => (d.data() as { farmerUid?: string }).farmerUid)
-    .filter((x): x is string => Boolean(x));
+    .map((docSnap) => {
+      const d = docSnap.data() as {
+        farmerUid?: string;
+        farmerLabel?: string;
+        farmerEmail?: string;
+      };
+      if (!d.farmerUid) return null;
+      return {
+        farmerUid: d.farmerUid,
+        farmerLabel: d.farmerLabel,
+        farmerEmail: d.farmerEmail,
+      };
+    })
+    .filter((x): x is EngineerFarmerLinkRow => x != null);
+}
+
+export async function listFarmerUidsForEngineer(engineerUid: string): Promise<string[]> {
+  const rows = await listFarmerLinksForEngineer(engineerUid);
+  return rows.map((r) => r.farmerUid);
 }
