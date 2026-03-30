@@ -21,6 +21,12 @@ export function getCurrentFirebaseUid(): string | null {
   return getFirebaseAuth()?.currentUser?.uid ?? null;
 }
 
+/** Firestore yaz/oku öncesi token’ın hazır olmasını sağlar (permission hatalarını azaltır). */
+export async function refreshAuthTokenForFirestore(): Promise<void> {
+  const u = getFirebaseAuth()?.currentUser;
+  if (u) await u.getIdToken(true);
+}
+
 /** Authentication → Sign-in method → Anonymous açık olmalı. */
 export async function ensureFirebaseSignedIn(): Promise<User | null> {
   if (!isFirebaseConfigured()) return null;

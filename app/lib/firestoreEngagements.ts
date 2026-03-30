@@ -13,7 +13,7 @@ export async function createFarmerEngineerLink(
   meta?: LinkMeta,
 ) {
   const db = getFirestoreDb();
-  if (!db) return;
+  if (!db) throw new Error('Firestore kullanılamıyor (yapılandırma veya ağ).');
   await setDoc(
     doc(db, COL.engagements, engagementDocId(engineerUid, farmerUid)),
     {

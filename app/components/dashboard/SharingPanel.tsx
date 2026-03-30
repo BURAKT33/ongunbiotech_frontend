@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Check, Copy, Share2, UserPlus } from 'lucide-react';
-import { getCurrentFirebaseUid } from '../../lib/firebaseAuth';
+import { getCurrentFirebaseUid, refreshAuthTokenForFirestore } from '../../lib/firebaseAuth';
 import {
   createFarmerEngineerLink,
   listEngineerLinksForFarmer,
@@ -80,13 +80,32 @@ export function SharingPanel({ role }: Props) {
       setLinkErr('Mühendis Firebase uid girin.');
       return;
     }
+    if (engineerUid === p.uid) {
+      setLinkErr('Kendi uid’nizi girdiniz; mühendisin uid’sini girin.');
+      return;
+    }
     setLinkBusy(true);
     try {
+      await refreshAuthTokenForFirestore();
       await createFarmerEngineerLink(engineerUid, p.uid);
       setLinkOk(true);
       setEngineerUidInput('');
       await refreshLinks();
       window.dispatchEvent(new Event(REPORTS_UPDATED_EVENT));
+    } catch (err: unknown) {
+      const code =
+        err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+          ? (err as { code: string }).code
+          : '';
+      if (code === 'permission-denied') {
+        setLinkErr(
+          'Firestore izni reddedildi. Şunları kontrol edin: (1) Console’da güncel kurallar yayında mı — çiftçinin engagements belgesi oluşturabilmesi ve mühendis hesabının users/{uid} içinde role=muhendis olması gerekir. (2) Yapıştırdığınız uid tam olarak mühendise ait mi.',
+        );
+      } else if (err instanceof Error && err.message) {
+        setLinkErr(err.message);
+      } else {
+        setLinkErr('Bağlantı kurulamadı. Biraz sonra tekrar deneyin.');
+      }
     } finally {
       setLinkBusy(false);
     }
