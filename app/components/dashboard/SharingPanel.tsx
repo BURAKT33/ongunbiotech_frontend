@@ -99,7 +99,7 @@ export function SharingPanel({ role }: Props) {
           : '';
       if (code === 'permission-denied') {
         setLinkErr(
-          'Firestore izni reddedildi. Şunları kontrol edin: (1) Console’da güncel kurallar yayında mı — çiftçinin engagements belgesi oluşturabilmesi ve mühendis hesabının users/{uid} içinde role=muhendis olması gerekir. (2) Yapıştırdığınız uid tam olarak mühendise ait mi.',
+          'Firestore izni reddedildi. Firebase Console’da güncel firestore.rules dosyanızı yayınlayın (çiftçi, farmerUid == kendi uid’si iken engagements oluşturabilmeli). Mühendis uid’sinin Auth’taki değerle birebir aynı olduğundan emin olun.',
         );
       } else if (err instanceof Error && err.message) {
         setLinkErr(err.message);
