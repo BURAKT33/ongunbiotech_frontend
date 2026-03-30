@@ -1,4 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getFirestoreDb } from './firebase';
 import { COL } from './firestorePaths';
 import type { UserRole } from './session';
@@ -37,51 +37,30 @@ export async function upsertFirestoreUser(
   uid: string,
   fields: FirestoreUserFields,
 ): Promise<{ publicId: string } | null> {
+  /**
+   * Login sırasında hata almamak için: yalnızca `users/{uid}` yazıyoruz.
+   * `userPublicIds` (paylaşım kodu) bu adım için zorunlu değil.
+   */
   const db = getFirestoreDb();
   if (!db) return null;
+
   const ref = doc(db, COL.users, uid);
   const snap = await getDoc(ref);
   const existing = snap.exists() ? snap.data() : null;
-  let publicId = typeof existing?.publicId === 'string' && existing.publicId ? existing.publicId : '';
-  if (!publicId) {
-    publicId = await allocateUniquePublicId(db);
-  }
-  const idxRef = doc(db, COL.userPublicIds, publicId);
-  const userPayload = {
-    ...fields,
-    publicId,
-    updatedAt: serverTimestamp(),
-  };
-  const indexPayload = {
-    uid,
-    role: fields.role,
-    displayName: fields.displayName,
-    email: fields.email || '',
-    updatedAt: serverTimestamp(),
-  };
+  const publicId =
+    typeof existing?.publicId === 'string' && existing.publicId ? existing.publicId : '';
 
-  /**
-   * Tek batch ile yaz: güvenlik kuralları batch’te önce tüm yazımlar uygulanmış gibi değerlendirilir,
-   * böylece `userPublicIds` kuralındaki `users.publicId == publicId` hemen sağlanır.
-   */
-  const batch = writeBatch(db);
-  batch.set(ref, userPayload, { merge: true });
-  batch.set(idxRef, indexPayload, { merge: true });
-  try {
-    await batch.commit();
-  } catch {
-    /**
-     * Projede `userPublicIds` kuralları deploy edilmemiş veya eski SDK davranışı:
-     * en azından `users` yazılsın ki giriş ve rol doğrulaması kilitlenmesin; indeks Paylaşım ekranında tekrar dener.
-     */
-    await setDoc(ref, userPayload, { merge: true });
-    try {
-      await setDoc(idxRef, indexPayload, { merge: true });
-    } catch {
-      /* yoksay */
-    }
-  }
-  return { publicId };
+  await setDoc(
+    ref,
+    {
+      ...fields,
+      ...(publicId ? { publicId } : {}),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return publicId ? { publicId } : null;
 }
 
 /** `users/{uid}` içinden paylaşım kodu (giriş sonrası eksik localStorage doldurma). */
