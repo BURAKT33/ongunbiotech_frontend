@@ -1,6 +1,10 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Check, Copy, Share2, UserPlus } from 'lucide-react';
-import { getCurrentFirebaseUid, refreshAuthTokenForFirestore } from '../../lib/firebaseAuth';
+import {
+  ensureFirebaseSignedIn,
+  getCurrentFirebaseUid,
+  refreshAuthTokenForFirestore,
+} from '../../lib/firebaseAuth';
 import {
   createFarmerEngineerLink,
   listEngineerLinksForFarmer,
@@ -71,9 +75,12 @@ export function SharingPanel({ role }: Props) {
       setLinkErr('Oturum bulunamadı.');
       return;
     }
+    await ensureFirebaseSignedIn();
     const fb = getCurrentFirebaseUid();
-    if (fb !== p.uid) {
-      setLinkErr('Paylaşım için Firebase oturumunun açık olması gerekir. Sayfayı yenileyip tekrar deneyin.');
+    if (!fb || fb !== p.uid) {
+      setLinkErr(
+        'Firebase oturumu profil ile eşleşmiyor (sayfa açılırken oluşan anonim oturum olabilir). Çıkış yapıp tekrar giriş yapın; ardından Paylaşım’ı yeniden deneyin.',
+      );
       return;
     }
     const engineerUid = engineerUidInput.trim();
@@ -88,7 +95,7 @@ export function SharingPanel({ role }: Props) {
     setLinkBusy(true);
     try {
       await refreshAuthTokenForFirestore();
-      await createFarmerEngineerLink(engineerUid, p.uid, {
+      await createFarmerEngineerLink(engineerUid, fb, {
         farmerDisplayName: p.displayName?.trim() || undefined,
         farmerEmail: p.email?.trim() || undefined,
       });

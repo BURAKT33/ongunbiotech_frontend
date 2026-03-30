@@ -11,6 +11,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { getFirebaseApp, isFirebaseConfigured } from './firebase';
+import { getStoredUserProfile } from './session';
 
 export function getFirebaseAuth() {
   const app = getFirebaseApp();
@@ -27,12 +28,35 @@ export async function refreshAuthTokenForFirestore(): Promise<void> {
   if (u) await u.getIdToken(true);
 }
 
-/** Authentication → Sign-in method → Anonymous açık olmalı. */
+/**
+ * Panel açılışında Firestore kullanımı için oturum.
+ * E-posta/Google ile giriş yapılmışken `currentUser` geç gelirken `signInAnonymously` çağrılırsa
+ * anonim uid ile `localStorage` profil uid’si uyuşm — engagements yazımı permission-denied olur.
+ */
 export async function ensureFirebaseSignedIn(): Promise<User | null> {
   if (!isFirebaseConfigured()) return null;
   const auth = getFirebaseAuth();
   if (!auth) return null;
   if (auth.currentUser) return auth.currentUser;
+
+  const waitingForRestoredSession = Boolean(getStoredUserProfile()?.uid);
+  if (waitingForRestoredSession) {
+    const user = await new Promise<User | null>((resolve) => {
+      let finished = false;
+      const done = (u: User | null) => {
+        if (finished) return;
+        finished = true;
+        unsubscribe();
+        resolve(u);
+      };
+      const unsubscribe = auth.onAuthStateChanged((u) => {
+        if (u) done(u);
+      });
+      window.setTimeout(() => done(auth.currentUser), 4000);
+    });
+    if (user) return user;
+  }
+
   try {
     const { user } = await signInAnonymously(auth);
     return user;
