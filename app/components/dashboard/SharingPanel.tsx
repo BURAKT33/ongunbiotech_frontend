@@ -3,6 +3,7 @@ import { Check, Copy, Share2, UserPlus } from 'lucide-react';
 import { getCurrentFirebaseUid } from '../../lib/firebaseAuth';
 import { isFirebaseConfigured } from '../../lib/firebase';
 import {
+  ensureUserPublicIdIndexFromUserDoc,
   fetchOwnPublicId,
 } from '../../lib/firestoreUsers';
 import {
@@ -40,6 +41,9 @@ export function SharingPanel({ role }: Props) {
         pid = fromFs;
         setStoredUserProfile({ ...p, publicId: fromFs });
       }
+    }
+    if (pid && isFirebaseConfigured()) {
+      void ensureUserPublicIdIndexFromUserDoc(p.uid);
     }
     setPublicId(pid);
 

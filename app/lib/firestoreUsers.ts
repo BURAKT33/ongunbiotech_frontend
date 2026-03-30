@@ -1,4 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { getFirestoreDb } from './firebase';
 import { COL } from './firestorePaths';
 import type { UserRole } from './session';
@@ -46,27 +46,41 @@ export async function upsertFirestoreUser(
   if (!publicId) {
     publicId = await allocateUniquePublicId(db);
   }
-  await setDoc(
-    ref,
-    {
-      ...fields,
-      publicId,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
   const idxRef = doc(db, COL.userPublicIds, publicId);
-  await setDoc(
-    idxRef,
-    {
-      uid,
-      role: fields.role,
-      displayName: fields.displayName,
-      email: fields.email || '',
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+  const userPayload = {
+    ...fields,
+    publicId,
+    updatedAt: serverTimestamp(),
+  };
+  const indexPayload = {
+    uid,
+    role: fields.role,
+    displayName: fields.displayName,
+    email: fields.email || '',
+    updatedAt: serverTimestamp(),
+  };
+
+  /**
+   * Tek batch ile yaz: güvenlik kuralları batch’te önce tüm yazımlar uygulanmış gibi değerlendirilir,
+   * böylece `userPublicIds` kuralındaki `users.publicId == publicId` hemen sağlanır.
+   */
+  const batch = writeBatch(db);
+  batch.set(ref, userPayload, { merge: true });
+  batch.set(idxRef, indexPayload, { merge: true });
+  try {
+    await batch.commit();
+  } catch {
+    /**
+     * Projede `userPublicIds` kuralları deploy edilmemiş veya eski SDK davranışı:
+     * en azından `users` yazılsın ki giriş ve rol doğrulaması kilitlenmesin; indeks Paylaşım ekranında tekrar dener.
+     */
+    await setDoc(ref, userPayload, { merge: true });
+    try {
+      await setDoc(idxRef, indexPayload, { merge: true });
+    } catch {
+      /* yoksay */
+    }
+  }
   return { publicId };
 }
 
@@ -77,6 +91,39 @@ export async function fetchOwnPublicId(uid: string): Promise<string | null> {
   const snap = await getDoc(doc(db, COL.users, uid));
   const pid = snap.data()?.publicId;
   return typeof pid === 'string' && pid ? pid : null;
+}
+
+/**
+ * `users/{uid}` içinde publicId varsa `userPublicIds` indeksini yazar (girişte indeks izni/kural sorunu giderildikten sonra).
+ */
+export async function ensureUserPublicIdIndexFromUserDoc(uid: string): Promise<boolean> {
+  const db = getFirestoreDb();
+  if (!db) return false;
+  const snap = await getDoc(doc(db, COL.users, uid));
+  if (!snap.exists()) return false;
+  const d = snap.data() as Record<string, unknown>;
+  const publicId = typeof d.publicId === 'string' ? d.publicId : '';
+  const role = d.role === 'ciftci' || d.role === 'muhendis' ? d.role : null;
+  const displayName = typeof d.displayName === 'string' ? d.displayName : '';
+  const email = typeof d.email === 'string' ? d.email : '';
+  if (!publicId || !role) return false;
+  const idxRef = doc(db, COL.userPublicIds, publicId);
+  try {
+    await setDoc(
+      idxRef,
+      {
+        uid,
+        role,
+        displayName,
+        email,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
