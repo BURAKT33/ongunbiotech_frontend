@@ -8,6 +8,7 @@ import {
   MessageSquare,
   User,
   RefreshCw,
+  Share2,
 } from 'lucide-react';
 import { PlantMonitor } from '../components/dashboard/PlantMonitor';
 import { AIAssistant } from '../components/dashboard/AIAssistant';
@@ -22,10 +23,11 @@ import {
   type UserRole,
 } from '../lib/session';
 import { DataSync } from '../components/dashboard/DataSync';
+import { SharingPanel } from '../components/dashboard/SharingPanel';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'monitor' | 'ai' | 'reports' | 'sync'>('monitor');
+  const [activeTab, setActiveTab] = useState<'monitor' | 'ai' | 'reports' | 'sharing' | 'sync'>('monitor');
   const [role, setRole] = useState<UserRole>('ciftci');
   const [headerName, setHeaderName] = useState('');
   const [headerEmail, setHeaderEmail] = useState('');
@@ -150,6 +152,18 @@ export function Dashboard() {
             </button>
 
             <button
+              onClick={() => setActiveTab('sharing')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'sharing'
+                  ? 'bg-green-50 text-green-600'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Share2 className="w-5 h-5" />
+              <span className="font-medium">Paylaşım</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('sync')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 activeTab === 'sync'
@@ -194,6 +208,15 @@ export function Dashboard() {
               <span className="text-xs">Rapor</span>
             </button>
             <button
+              onClick={() => setActiveTab('sharing')}
+              className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg ${
+                activeTab === 'sharing' ? 'text-green-600' : 'text-gray-600'
+              }`}
+            >
+              <Share2 className="w-5 h-5" />
+              <span className="text-xs">Paylaşım</span>
+            </button>
+            <button
               onClick={() => setActiveTab('sync')}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${
                 activeTab === 'sync' ? 'text-green-600' : 'text-gray-600'
@@ -211,6 +234,7 @@ export function Dashboard() {
             {activeTab === 'monitor' && (isEngineer ? <EngineerSignals /> : <PlantMonitor />)}
             {activeTab === 'ai' && <AIAssistant />}
             {activeTab === 'reports' && <Reports mode={isEngineer ? 'muhendis' : 'ciftci'} />}
+            {activeTab === 'sharing' && <SharingPanel role={role} />}
             {activeTab === 'sync' && <DataSync />}
           </div>
         </main>

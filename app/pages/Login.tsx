@@ -46,19 +46,22 @@ export function Login() {
   }) => {
     const role = opts.role;
     setStoredRole(role);
+    let publicId: string | undefined;
+    if (isFirebaseConfigured()) {
+      const meta = await upsertFirestoreUser(opts.uid, {
+        email: opts.email,
+        displayName: opts.displayName,
+        role,
+      });
+      publicId = meta?.publicId;
+    }
     setStoredUserProfile({
       uid: opts.uid,
       email: opts.email,
       displayName: opts.displayName,
       role,
+      publicId,
     });
-    if (isFirebaseConfigured()) {
-      await upsertFirestoreUser(opts.uid, {
-        email: opts.email,
-        displayName: opts.displayName,
-        role,
-      });
-    }
     navigate('/panel');
   };
 

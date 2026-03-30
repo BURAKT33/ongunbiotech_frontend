@@ -8,6 +8,8 @@ export type StoredUserProfile = {
   email?: string;
   displayName?: string;
   role: UserRole;
+  /** Kalıcı paylaşım kodu (örn. ONG-XXXXXXXX); Firestore `users` ve `userPublicIds` ile uyumlu. */
+  publicId?: string;
 };
 
 export function getStoredUserProfile(): StoredUserProfile | null {

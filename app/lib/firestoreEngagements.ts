@@ -1,17 +1,99 @@
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { getFirestoreDb } from './firebase';
+import { getShareIndexByPublicId } from './firestoreUsers';
 import { COL, engagementDocId } from './firestorePaths';
+import type { UserRole } from './session';
+import { normalizePublicIdInput } from './userPublicId';
 
-/** Mühendis konsoldan veya ileride UI’dan çiftçi uid’si ile bağ kurar. */
-export async function createFarmerEngineerLink(engineerUid: string, farmerUid: string) {
+type LinkMeta = { engineerPublicId?: string; engineerLabel?: string };
+
+export async function createFarmerEngineerLink(
+  engineerUid: string,
+  farmerUid: string,
+  meta?: LinkMeta,
+) {
   const db = getFirestoreDb();
   if (!db) return;
-  await setDoc(doc(db, COL.engagements, engagementDocId(engineerUid, farmerUid)), {
-    engineerUid,
-    farmerUid,
-    active: true,
-    createdAt: serverTimestamp(),
+  await setDoc(
+    doc(db, COL.engagements, engagementDocId(engineerUid, farmerUid)),
+    {
+      engineerUid,
+      farmerUid,
+      engineerPublicId: meta?.engineerPublicId,
+      engineerLabel: meta?.engineerLabel,
+      active: true,
+      createdAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+export type LinkFarmerToEngineerResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+/** Çiftçi, mühendisin paylaşım kodunu girerek rapor paylaşımı bağlar. */
+export async function linkFarmerToEngineerByPublicId(
+  farmerUid: string,
+  farmerRole: UserRole,
+  engineerPublicIdInput: string,
+): Promise<LinkFarmerToEngineerResult> {
+  if (farmerRole !== 'ciftci') {
+    return { ok: false, message: 'Bu işlem yalnızca çiftçi hesabıyla yapılabilir.' };
+  }
+  if (!normalizePublicIdInput(engineerPublicIdInput)) {
+    return { ok: false, message: 'Geçerli bir paylaşım kodu girin (örn. ONG-XXXXXXXX).' };
+  }
+  const idx = await getShareIndexByPublicId(engineerPublicIdInput);
+  if (!idx) {
+    return { ok: false, message: 'Bu kodla kayıtlı kullanıcı bulunamadı.' };
+  }
+  if (idx.role !== 'muhendis') {
+    return {
+      ok: false,
+      message: 'Bu kod bir mühendis hesabına ait değil. Mühendis paylaşım kodunu girin.',
+    };
+  }
+  if (idx.uid === farmerUid) {
+    return { ok: false, message: 'Kendi kodunuzu girdiniz; başka bir mühendisin kodunu kullanın.' };
+  }
+  await createFarmerEngineerLink(idx.uid, farmerUid, {
+    engineerPublicId: idx.publicId,
+    engineerLabel: idx.displayName || idx.email || idx.publicId,
   });
+  return { ok: true };
+}
+
+export type FarmerEngineerLinkRow = {
+  engineerUid: string;
+  engineerPublicId?: string;
+  engineerLabel?: string;
+};
+
+export async function listEngineerLinksForFarmer(farmerUid: string): Promise<FarmerEngineerLinkRow[]> {
+  const db = getFirestoreDb();
+  if (!db) return [];
+  const q = query(
+    collection(db, COL.engagements),
+    where('farmerUid', '==', farmerUid),
+    where('active', '==', true),
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((docSnap) => {
+      const d = docSnap.data() as {
+        engineerUid?: string;
+        engineerPublicId?: string;
+        engineerLabel?: string;
+      };
+      if (!d.engineerUid) return null;
+      return {
+        engineerUid: d.engineerUid,
+        engineerPublicId: d.engineerPublicId,
+        engineerLabel: d.engineerLabel,
+      };
+    })
+    .filter((x): x is FarmerEngineerLinkRow => x != null);
 }
 
 export async function listFarmerUidsForEngineer(engineerUid: string): Promise<string[]> {
