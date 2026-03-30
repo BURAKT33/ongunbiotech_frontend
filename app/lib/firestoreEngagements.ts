@@ -1,4 +1,13 @@
-import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+  type DocumentData,
+} from 'firebase/firestore';
 import { getFirestoreDb } from './firebase';
 import { getShareIndexByPublicId } from './firestoreUsers';
 import { COL, engagementDocId } from './firestorePaths';
@@ -6,6 +15,14 @@ import type { UserRole } from './session';
 import { normalizePublicIdInput } from './userPublicId';
 
 type LinkMeta = { engineerPublicId?: string; engineerLabel?: string };
+
+function omitUndefinedFields(obj: Record<string, unknown>): DocumentData {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out as DocumentData;
+}
 
 export async function createFarmerEngineerLink(
   engineerUid: string,
@@ -16,14 +33,14 @@ export async function createFarmerEngineerLink(
   if (!db) throw new Error('Firestore kullanılamıyor (yapılandırma veya ağ).');
   await setDoc(
     doc(db, COL.engagements, engagementDocId(engineerUid, farmerUid)),
-    {
+    omitUndefinedFields({
       engineerUid,
       farmerUid,
       engineerPublicId: meta?.engineerPublicId,
       engineerLabel: meta?.engineerLabel,
       active: true,
       createdAt: serverTimestamp(),
-    },
+    }),
     { merge: true },
   );
 }
