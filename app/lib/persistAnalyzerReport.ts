@@ -7,16 +7,20 @@ import { mergeCloudAndLocalApiReports } from './reportMerge';
 import type { ReportItem, ReportStatus } from './reportTypes';
 import { getStoredUserProfile } from './session';
 
-/** Eski tek-bucket anahtar (ilk uyumlu oturumda mevcut kullanıcıya taşınır ve silinir). */
-export const REPORTS_STORAGE_KEY = 'plantsignal-reports';
+/** Eski plantsignal-* anahtarlarından taşınır; kök `plantsignal-reports` da tek seferlik okunur. */
+const LEGACY_REPORTS_STORAGE_KEY = 'plantsignal-reports';
+const LEGACY_LAST_ANALYSIS_SUMMARY_KEY = 'plantsignal-last-analysis-summary';
+const LEGACY_PLANT_MONITOR_LABELS_KEY = 'plantsignal-monitor-labels';
+
+export const REPORTS_STORAGE_KEY = 'ongunbiotech-reports';
 
 export function reportsLocalStorageKeyForUid(uid: string): string {
   return `${REPORTS_STORAGE_KEY}:${uid}`;
 }
 
-export const LAST_ANALYSIS_SUMMARY_KEY = 'plantsignal-last-analysis-summary';
-export const PLANT_MONITOR_LABELS_KEY = 'plantsignal-monitor-labels';
-export const REPORTS_UPDATED_EVENT = 'plantsignal-reports-updated';
+export const LAST_ANALYSIS_SUMMARY_KEY = 'ongunbiotech-last-analysis-summary';
+export const PLANT_MONITOR_LABELS_KEY = 'ongunbiotech-monitor-labels';
+export const REPORTS_UPDATED_EVENT = 'ongunbiotech-reports-updated';
 
 /**
  * Oturumdaki kullanıcıya ait yerel rapor deposu anahtarı.
@@ -30,11 +34,38 @@ export function getActiveReportStorageUid(): string | null {
   return profile.uid;
 }
 
-/** Eski `plantsignal-reports` içeriğini bu kullanıcının bucket'ına taşır (bir kez). */
+function migrateScopedStorage(uid: string, newBase: string, legacyBase: string): void {
+  const next = `${newBase}:${uid}`;
+  if (localStorage.getItem(next) != null) return;
+  const prev = `${legacyBase}:${uid}`;
+  const leg = localStorage.getItem(prev);
+  if (leg == null) return;
+  try {
+    localStorage.setItem(next, leg);
+    localStorage.removeItem(prev);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Eski `plantsignal-reports` (kök veya uid'li bucket) içeriğini yeni anahtara taşır (bir kez). */
 export function migrateLegacyReportsIfNeeded(uid: string): void {
   const bucket = reportsLocalStorageKeyForUid(uid);
   if (localStorage.getItem(bucket) != null) return;
-  const leg = localStorage.getItem(REPORTS_STORAGE_KEY);
+
+  const legacyBucket = `${LEGACY_REPORTS_STORAGE_KEY}:${uid}`;
+  const fromOldScope = localStorage.getItem(legacyBucket);
+  if (fromOldScope != null) {
+    try {
+      localStorage.setItem(bucket, fromOldScope);
+      localStorage.removeItem(legacyBucket);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+
+  const leg = localStorage.getItem(LEGACY_REPORTS_STORAGE_KEY);
   if (leg != null) {
     try {
       const parsed = JSON.parse(leg) as unknown;
@@ -49,7 +80,7 @@ export function migrateLegacyReportsIfNeeded(uid: string): void {
     } catch {
       localStorage.setItem(bucket, leg);
     }
-    localStorage.removeItem(REPORTS_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_REPORTS_STORAGE_KEY);
     return;
   }
   try {
@@ -87,12 +118,16 @@ export function replacePersistedLocalApiReportsForSession(items: ReportItem[]): 
 
 function summaryStorageKey(): string | null {
   const uid = getActiveReportStorageUid();
-  return uid ? `${LAST_ANALYSIS_SUMMARY_KEY}:${uid}` : null;
+  if (!uid) return null;
+  migrateScopedStorage(uid, LAST_ANALYSIS_SUMMARY_KEY, LEGACY_LAST_ANALYSIS_SUMMARY_KEY);
+  return `${LAST_ANALYSIS_SUMMARY_KEY}:${uid}`;
 }
 
 function labelsStorageKey(): string | null {
   const uid = getActiveReportStorageUid();
-  return uid ? `${PLANT_MONITOR_LABELS_KEY}:${uid}` : null;
+  if (!uid) return null;
+  migrateScopedStorage(uid, PLANT_MONITOR_LABELS_KEY, LEGACY_PLANT_MONITOR_LABELS_KEY);
+  return `${PLANT_MONITOR_LABELS_KEY}:${uid}`;
 }
 
 export type LastAnalysisSummary = {

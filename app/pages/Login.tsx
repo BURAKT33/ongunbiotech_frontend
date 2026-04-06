@@ -228,7 +228,7 @@ export function Login() {
             <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
               <Leaf className="w-7 h-7 text-white" />
             </div>
-            <span className="text-2xl font-semibold text-gray-900">PlantSignal</span>
+            <span className="text-2xl font-semibold text-gray-900">Ongun Biotech</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {isEngineer ? 'Mühendis Paneli' : 'Çiftçi Paneli'}
@@ -336,7 +336,7 @@ export function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent outline-none"
-                placeholder={isEngineer ? 'muhendis@firma.com' : 'ornek@ciftlik.com'}
+                placeholder="E-posta adresiniz"
                 required
                 autoComplete="email"
               />

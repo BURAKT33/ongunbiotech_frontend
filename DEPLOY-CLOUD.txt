@@ -1,12 +1,12 @@
 ================================================================================
-PlantSignal — Vercel (frontend) + Cloud Run (backend) + Firebase (Firestore/Storage)
+Ongun Biotech — Vercel (frontend) + Cloud Run (backend) + Firebase (Firestore/Storage)
 ================================================================================
 
 Bağlantı özeti
 --------------
 - Tarayıcı → Firebase: doğrudan (VITE_FIREBASE_*). Firestore/Storage kuralları Firebase Console’da.
 - Tarayıcı → Backend: VITE_API_BASE_URL = Cloud Run hizmet URL’si (sonunda / yok).
-- Backend → Plant Analyzer: PLANT_ANALYZER_URL (Cloud Run ortam değişkeni).
+- Backend → Ongun Biotech analiz servisi: PLANT_ANALYZER_URL (Cloud Run ortam değişkeni).
 
 Vercel (frontend) — Environment Variables
 -----------------------------------------

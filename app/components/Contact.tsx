@@ -11,7 +11,7 @@ export function Contact() {
               Bizimle İletişime Geçin
             </h2>
             <p className="text-lg text-gray-600 mb-8">
-              PlantSignal teknolojisi hakkında daha fazla bilgi almak veya demo talep etmek 
+              Ongun Biotech teknolojisi hakkında daha fazla bilgi almak veya demo talep etmek 
               için bizimle iletişime geçebilirsiniz.
             </p>
 
@@ -22,8 +22,8 @@ export function Contact() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">E-posta</h3>
-                  <p className="text-gray-600">info@plantsignal.com</p>
-                  <p className="text-gray-600">destek@plantsignal.com</p>
+                  <p className="text-gray-600">info@ongunbiotech.com</p>
+                  <p className="text-gray-600">destek@ongunbiotech.com</p>
                 </div>
               </div>
 

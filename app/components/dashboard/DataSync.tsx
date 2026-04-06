@@ -78,7 +78,7 @@ async function handleAnalyzerResponse(
     if (!res.ok) {
       return { ok: false, userMessage: `HTTP ${res.status}: ${text.slice(0, 240) || res.statusText}` };
     }
-    return { ok: false, userMessage: 'Yanıt JSON değil; Plant Analyzer çıktısı bekleniyor.' };
+    return { ok: false, userMessage: 'Yanıt JSON değil; Ongun Biotech Analyzer çıktısı bekleniyor.' };
   }
 
   if (!res.ok) {

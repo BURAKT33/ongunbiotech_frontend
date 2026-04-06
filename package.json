@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "homepage": "https://<your-github-username>.github.io/website_plant/",
+  "homepage": "https://<your-github-username>.github.io/ongunbiotech/",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",

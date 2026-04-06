@@ -11,7 +11,7 @@ export function Footer() {
               <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
                 <Leaf className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-semibold">PlantSignal</span>
+              <span className="text-xl font-semibold">Ongun Biotech</span>
             </div>
             <p className="text-gray-400 mb-4 max-w-md">
               Bitkilerden alınan elektriksel sinyaller ile bitki sağlığını gerçek zamanlı 
@@ -89,7 +89,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
-          <p>&copy; {new Date().getFullYear()} PlantSignal. Tüm hakları saklıdır.</p>
+          <p>&copy; {new Date().getFullYear()} Ongun Biotech. Tüm hakları saklıdır.</p>
         </div>
       </div>
     </footer>

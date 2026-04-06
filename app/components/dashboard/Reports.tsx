@@ -311,7 +311,7 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
           <p className="text-sm font-medium text-gray-900">{report.title}</p>
           <p className="text-xs text-gray-500 mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
             <span>
-              Kaynak: {report.source === 'api' ? 'Plant Analyzer' : 'Örnek'}
+              Kaynak: {report.source === 'api' ? 'Ongun Biotech Analyzer' : 'Örnek'}
               {report.analyzerDurum ? ` · Durum: ${report.analyzerDurum}` : ''}
               {openable(report) && onSelect ? ' · Ayrıntı için tıklayın' : ''}
             </span>
@@ -359,7 +359,7 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
             <p className="text-gray-600 mt-1">
             {mode === 'muhendis'
               ? 'Bağlı çiftçilerin sera raporları, kendi ölçümleriniz; analyzer raporları Firebase’de dosya olarak da saklanabilir'
-              : 'Plant Analyzer çıktılarınız; Firebase yapılandırıldıysa .md rapor dosyası bulutta da tutulur'}
+              : 'Ongun Biotech Analyzer çıktılarınız; Firebase yapılandırıldıysa .md rapor dosyası bulutta da tutulur'}
           </p>
         </div>
         <button

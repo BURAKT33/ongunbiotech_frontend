@@ -13,7 +13,7 @@ export function AIAssistant() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Merhaba! Ben PlantSignal AI Asistanınızım. Bitkilerinizin verilerini analiz ederek size önerilerde bulunabilirim. Nasıl yardımcı olabilirim?',
+      content: 'Merhaba! Ben Ongun Biotech AI Asistanınızım. Bitkilerinizin verilerini analiz ederek size önerilerde bulunabilirim. Nasıl yardımcı olabilirim?',
       timestamp: new Date(),
     },
   ]);

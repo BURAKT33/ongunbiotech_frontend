@@ -450,7 +450,7 @@ export function PlantMonitor() {
           {apiChart ? (
             <>
               <p className="text-sm text-gray-500 mb-4">
-                Son Plant Analyzer oturumundaki <span className="font-medium text-gray-700">signal_chart</span> verisi
+                Son Ongun Biotech analiz oturumundaki <span className="font-medium text-gray-700">signal_chart</span> verisi
                 (bin ortalaması). Veri senkron ile yeni CSV gönderdiğinizde güncellenir.
               </p>
               <ReportSignalCharts

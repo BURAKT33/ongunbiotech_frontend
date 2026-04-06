@@ -69,7 +69,7 @@ export function Dashboard() {
                 <Leaf className="w-6 h-6 text-white" />
               </div>
               <div>
-                <span className="text-xl font-semibold text-gray-900">PlantSignal</span>
+                <span className="text-xl font-semibold text-gray-900">Ongun Biotech</span>
                 <p className="text-xs text-gray-500">
                   {isEngineer ? 'Mühendis Paneli' : 'Çiftçi Paneli'}
                 </p>
@@ -84,10 +84,9 @@ export function Dashboard() {
                     {headerName ||
                       (isEngineer ? 'Mühendis' : 'Çiftçi')}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    {headerEmail ||
-                      (isEngineer ? 'muhendis@firma.com' : 'ciftci@ciftlik.com')}
-                  </p>
+                  {headerEmail ? (
+                    <p className="text-xs text-gray-500">{headerEmail}</p>
+                  ) : null}
                 </div>
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
