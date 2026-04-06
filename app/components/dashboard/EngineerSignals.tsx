@@ -224,7 +224,7 @@ export function EngineerSignals() {
 
         {farmerGroups.length === 0 ? (
           <p className="text-sm text-gray-600 bg-white rounded-xl border border-gray-200 p-4">
-            Henüz bağlı çiftçiden gelen Analyzer raporu yok. Raporlar sekmesinde görünen çiftçi raporları
+            Henüz paylaşım üzerinden gelen Analyzer raporu yok. Raporlar sekmesinde görünen raporlar
             burada da listelenir; veri senkron veya yeni yükleme sonrası yenilenir.
           </p>
         ) : (

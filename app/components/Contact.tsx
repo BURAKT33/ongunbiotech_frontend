@@ -33,8 +33,7 @@ export function Contact() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Telefon</h3>
-                  <p className="text-gray-600">+90 (212) 555 0123</p>
-                  <p className="text-gray-600">+90 (532) 555 0123</p>
+                  <p className="text-gray-600">+90 (549) 401 2013</p>
                 </div>
               </div>
 
@@ -45,8 +44,7 @@ export function Contact() {
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Adres</h3>
                   <p className="text-gray-600">
-                    Teknoloji Parkı, Blok A, Kat 5<br />
-                    İstanbul, Türkiye
+                  
                   </p>
                 </div>
               </div>

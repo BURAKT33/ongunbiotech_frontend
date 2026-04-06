@@ -133,7 +133,7 @@ export function SharingPanel({ role }: Props) {
         </h1>
         <p className="text-gray-600 mt-1">
           Çiftçi, paylaşmak istediği mühendisin Firebase uid’sini girer; sistem bu uid ile bir çiftçi–mühendis bağlantısı
-          kurar. Mühendis panelinde <strong>Paylaşım → Bağlı çiftçiler</strong> ve <strong>Çiftçi Raporları</strong> bu
+          kurar. Mühendis panelinde <strong>Paylaşım → Bağlı çiftçiler</strong> ve <strong>Raporlar</strong> bu
           bağlantıya göre dolar; ilgili çiftçinin tüm Firestore raporları okunabilir olur.
         </p>
       </div>
@@ -180,8 +180,8 @@ export function SharingPanel({ role }: Props) {
             Mühendisle paylaşım
           </h2>
           <p className="text-sm text-gray-600">
-            Mühendisin Firebase uid’sini girin. Bağlantı kurulunca Analyzer raporlarınız mühendisin panelinde (Çiftçi
-            Raporları ve Sinyal Ölçümleri) görünür.
+            Mühendisin Firebase uid’sini girin. Bağlantı kurulunca Analyzer raporlarınız mühendisin panelinde
+            (<strong>Raporlar</strong> ve <strong>Sinyal Ölçümleri</strong>) görünür.
           </p>
           <form onSubmit={(e) => void handleLinkSubmit(e)} className="space-y-3">
             <label htmlFor="engineer-uid" className="text-sm font-medium text-gray-700 block">
@@ -234,7 +234,7 @@ export function SharingPanel({ role }: Props) {
           <h2 className="text-lg font-semibold text-gray-900">Bağlı çiftçiler</h2>
           <p className="text-sm text-gray-600">
             Çiftçi tarafında girilen mühendis uid’si sizin hesabınızla eşleştiyse burada listelenir. Ayrıntılı raporlar
-            için <strong>Çiftçi Raporları</strong> ve sinyaller için <strong>Sinyal Ölçümleri</strong> sekmelerine
+            için <strong>Raporlar</strong> ve sinyaller için <strong>Sinyal Ölçümleri</strong> sekmelerine
             bakın.
           </p>
           {farmerLinks.length === 0 ? (

@@ -235,7 +235,7 @@ export function Login() {
           </h1>
           <p className="text-gray-600">
             {isEngineer
-              ? 'Bağlı çiftçilerin raporlarını ve sahadaki ölçümlerinizi yönetin'
+              ? 'Raporları ve sahadaki ölçümlerinizi yönetin'
               : 'Bitkilerinizi izlemek için giriş yapın veya kayıt olun'}
           </p>
           {isFirebaseConfigured() && (

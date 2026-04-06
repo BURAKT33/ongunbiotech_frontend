@@ -261,7 +261,7 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Raporlar</h1>
             <p className="text-gray-600 mt-1">
             {mode === 'muhendis'
-              ? 'Bağlı çiftçilerin sera raporları, kendi ölçümleriniz; analyzer raporları Firebase’de dosya olarak da saklanabilir'
+              ? 'Paylaşım üzerinden gelen raporlar ve kendi ölçümleriniz; analyzer çıktıları Firebase’de dosya olarak da saklanabilir'
               : 'Ongun Biotech Analyzer çıktılarınız; Firebase yapılandırıldıysa .md rapor dosyası bulutta da tutulur'}
           </p>
         </div>
@@ -284,7 +284,7 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
                   <Users className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Çiftçi raporları</p>
+                  <p className="text-xs text-gray-500">Raporlar</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.farmerReportTotal}</p>
                 </div>
               </div>
@@ -325,16 +325,16 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
                     <Users className="w-5 h-5 text-green-700" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Çiftçi raporları</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Raporlar</h2>
                     <p className="text-sm text-gray-500">
-                      Paylaşımı onaylanmış çiftçilerin analyzer raporları (Firebase / yerel birleşik liste)
+                      Paylaşımı onaylanmış kaynaklardan gelen analyzer raporları (Firebase / yerel birleşik liste)
                     </p>
                   </div>
                 </div>
 
                 {engineerFarmerCards.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-5 py-8 text-sm text-gray-600">
-                    Henüz çiftçi raporu yok. Bağlı çiftçiler analiz kaydettikçe kayıtlar burada görünür.
+                    Henüz rapor yok. Paylaşım üzerinden analiz kaydı geldikçe kayıtlar burada görünür.
                   </div>
                 ) : (
                   <>
@@ -380,7 +380,7 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
 
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                       <div className="px-6 py-4 border-b border-gray-200">
-                        <h3 className="text-sm font-medium text-gray-900">Seçili çiftçi raporları</h3>
+                        <h3 className="text-sm font-medium text-gray-900">Seçili raporlar</h3>
                         <p className="text-sm text-gray-600 mt-1">
                           <span className="font-medium text-gray-900">
                             {selectedFarmerName || '—'}
@@ -415,7 +415,7 @@ export function Reports({ mode = 'ciftci' }: ReportsProps) {
                                   colSpan={5}
                                   className="py-8 px-4 text-sm text-gray-500 text-center"
                                 >
-                                  Bu çiftçi için rapor bulunamadı.
+                                  Bu seçim için rapor bulunamadı.
                                 </td>
                               </tr>
                             ) : (
